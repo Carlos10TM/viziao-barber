@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Viziao Barber — Agenda tu corte</title>
+  <meta name="description" content="Agenda tu hora en Viziao Barber, agendamiento 100% online.">
+  <meta name="theme-color" content="#0A0A0C">
+
+  <!-- Tipografías -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Resplandor ambiental de fondo -->
+  <div class="ambient-glow ambient-glow--purple" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow--gold" aria-hidden="true"></div>
+
+  <header class="top-bar">
+    <div class="top-bar__logo">
+      <svg class="top-bar__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm14-6L8 18M8 6l4 4m0 4-4 4M20 18 8 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="top-bar__wordmark">VIZIAO<span class="top-bar__wordmark-sub">BARBER</span></span>
+    </div>
+    <span class="top-bar__status">
+      <span class="status-dot" aria-hidden="true"></span> Reservas abiertas
+    </span>
+  </header>
+
+  <main class="app">
+
+    <!-- HERO -->
+    <section class="hero">
+      <p class="hero__eyebrow">AGENDAMIENTO ONLINE</p>
+      <h1 class="hero__title">CORTE LIMPIO,<br><span class="hero__title-accent">ACTITUD INTACTA</span></h1>
+      <p class="hero__subtitle">Reserva tu hora en menos de un minuto. Sin llamadas, sin esperas.</p>
+    </section>
+
+    <form id="booking-form" novalidate>
+
+      <!-- PASO 1: SERVICIO -->
+      <section class="step" aria-labelledby="step1-title">
+        <h2 class="step__title" id="step1-title"><span class="step__number">1</span> Elige tu servicio</h2>
+        <div id="servicios-container" class="servicios-container">
+          <!-- Tarjetas de servicio generadas por app.js -->
+        </div>
+      </section>
+
+      <!-- PASO 2: FECHA -->
+      <section class="step" aria-labelledby="step2-title">
+        <h2 class="step__title" id="step2-title"><span class="step__number">2</span> Elige tu día</h2>
+        <p class="step__hint">Lunes a sábado · 10:00 – 21:00 · Domingos cerrado</p>
+        <div class="day-strip-wrapper">
+          <button type="button" class="day-nav day-nav--prev" id="day-nav-prev" aria-label="Días anteriores">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div id="day-strip" class="day-strip" role="listbox" aria-label="Selecciona un día">
+            <!-- Chips de días generados por app.js -->
+          </div>
+          <button type="button" class="day-nav day-nav--next" id="day-nav-next" aria-label="Días siguientes">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- PASO 3: HORA -->
+      <section class="step" aria-labelledby="step3-title">
+        <h2 class="step__title" id="step3-title"><span class="step__number">3</span> Elige tu hora</h2>
+        <div id="hours-grid" class="hours-grid" role="listbox" aria-label="Selecciona una hora" aria-live="polite" aria-busy="false">
+          <p class="hours-grid__empty">Selecciona un día para ver los horarios disponibles.</p>
+        </div>
+      </section>
+
+      <!-- PASO 4: DATOS DEL CLIENTE -->
+      <section class="step" aria-labelledby="step4-title">
+        <h2 class="step__title" id="step4-title"><span class="step__number">4</span> Tus datos</h2>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="nombre">Nombre</label>
+            <input type="text" id="nombre" name="nombre" autocomplete="given-name" placeholder="Ej: Carlos" required>
+            <span class="field__error" id="nombre-error" role="alert"></span>
+          </div>
+
+          <div class="field">
+            <label for="apellido">Apellido</label>
+            <input type="text" id="apellido" name="apellido" autocomplete="family-name" placeholder="Ej: Soto" required>
+            <span class="field__error" id="apellido-error" role="alert"></span>
+          </div>
+
+          <div class="field field--phone">
+            <label for="telefono">Teléfono móvil</label>
+            <div class="phone-group">
+              <label for="codigo-pais" class="sr-only">Código de país</label>
+              <select id="codigo-pais" name="codigo-pais" aria-label="Código de país">
+                <!-- Se generará automáticamente desde app.js -->
+              </select>
+              <input type="tel" id="telefono" name="telefono" inputmode="numeric" pattern="[0-9]{7,12}" autocomplete="tel-national" placeholder="9 1234 5678" required>
+            </div>
+            <span class="field__error" id="telefono-error" role="alert"></span>
+          </div>
+
+          <div class="field field--full">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" autocomplete="email" placeholder="tucorreo@mail.com" required>
+            <span class="field__error" id="email-error" role="alert"></span>
+          </div>
+
+          <div class="field field--full">
+            <label for="observaciones">Observaciones <span class="field__optional">(opcional)</span></label>
+            <textarea id="observaciones" name="observaciones" rows="3" placeholder="Escribe aquí información que consideres relevante para tu cita"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Espaciador para que la barra sticky no tape el último campo -->
+      <div class="bottom-spacer" aria-hidden="true"></div>
+
+      <!-- BARRA STICKY DE RESUMEN + CTA -->
+      <div class="summary-bar">
+        <div class="summary-bar__info">
+          <p class="summary-bar__line" id="summary-line">Completa los pasos para reservar</p>
+          <p class="summary-bar__price" id="summary-price"></p>
+        </div>
+        <button type="submit" class="btn-confirm" id="btn-confirm" disabled>
+          <span id="btn-confirm-text">Confirmar Cita</span>
+        </button>
+      </div>
+
+    </form>
+  </main>
+
+  <footer class="app-footer">
+    <p>© <span id="footer-year"></span> Viziao Barber — Agenda Online · Hecho en Chile 🇨🇱</p>
+  </footer>
+
+  <!-- MODAL DE ÉXITO -->
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" id="modal">
+      <button type="button" class="modal__close" id="modal-close" aria-label="Cerrar">✕</button>
+
+      <div class="modal__check" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 12.5 9.5 18 20 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <h2 class="modal__title" id="modal-title">¡CITA CONFIRMADA!</h2>
+      <p class="modal__subtitle">Te esperamos en Viziao Barber 🔥</p>
+
+      <div class="ticket-stub">
+        <div class="ticket-stub__row">
+          <span class="ticket-stub__label">Servicio</span>
+          <span class="ticket-stub__value" id="modal-servicio">—</span>
+        </div>
+        <div class="ticket-stub__row">
+          <span class="ticket-stub__label">Fecha</span>
+          <span class="ticket-stub__value" id="modal-fecha">—</span>
+        </div>
+        <div class="ticket-stub__row">
+          <span class="ticket-stub__label">Hora</span>
+          <span class="ticket-stub__value" id="modal-hora">—</span>
+        </div>
+        <div class="ticket-stub__divider" aria-hidden="true"></div>
+        <div class="ticket-stub__row">
+          <span class="ticket-stub__label">A nombre de</span>
+          <span class="ticket-stub__value" id="modal-nombre">—</span>
+        </div>
+        <div class="ticket-stub__row ticket-stub__row--total">
+          <span class="ticket-stub__label">Total</span>
+          <span class="ticket-stub__value" id="modal-precio">—</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn-confirm btn-confirm--modal" id="modal-done">Listo</button>
+    </div>
+  </div>
+
+  <!-- Zona para notificaciones tipo toast -->
+  <div class="toast" id="toast" role="status" aria-live="assertive" hidden></div>
+
+  <!-- SDK oficial de Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
