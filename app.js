@@ -484,21 +484,24 @@ const camposConValidador = [
   ['telefono', el.telefono],
   ['email', el.email],
 ];
- 
+
 camposConValidador.forEach(([nombreCampo, inputEl]) => {
-  let tocado = false;
- 
+  // Al salir del campo (blur) valida y muestra error si falta algo
   inputEl.addEventListener('blur', () => {
-    tocado = true;
     VALIDADORES_CAMPO[nombreCampo](true);
     actualizarResumen();
   });
- 
+
+  // Escucha en tiempo real mientras escribe o autocompleta,
+  // habilitando el botón de inmediato sin esperar a mover la pantalla
   inputEl.addEventListener('input', () => {
-    if (tocado) VALIDADORES_CAMPO[nombreCampo](true);
+    VALIDADORES_CAMPO[nombreCampo](true);
     actualizarResumen();
   });
 });
+
+// Escuchador extra para el código de país por si lo cambian
+el.codigoPais.addEventListener('change', actualizarResumen);
  
  
 /* =========================================================================
