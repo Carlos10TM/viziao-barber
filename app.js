@@ -643,6 +643,15 @@ function init() {
   renderServicios();
   renderDayStrip();
   renderCodigosPais();
+
+  // Autoseleccionar el primer servicio al cargar la página si existe
+  const primerServicio = document.querySelector('input[name="servicio"]');
+  if (primerServicio) {
+    primerServicio.checked = true;
+    // Guardamos el servicio en el estado global de la app
+    estado.servicioSeleccionado = SERVICIOS.find(s => s.id === primerServicio.value);
+  }
+
   actualizarResumen();
 }
  
