@@ -647,12 +647,16 @@ function init() {
   renderDayStrip();
   renderCodigosPais();
 
-  // Autoseleccionar el primer servicio al cargar la página si existe
-  const primerServicio = document.querySelector('input[name="servicio"]');
-  if (primerServicio) {
-    primerServicio.checked = true;
-    // Guardamos el servicio en el estado global de la app
-    estado.servicioSeleccionado = SERVICIOS.find(s => s.id === primerServicio.value);
+  // Autoseleccionar el primer servicio real desde el arreglo de negocio
+  const activos = SERVICIOS.filter((s) => s.activo);
+  if (activos.length > 0) {
+    state.servicio = activos[0]; // Lo guardamos en el 'state' real inglés
+    
+    // Visualmente marcamos la primera tarjeta como presionada
+    const primeraTarjeta = el.serviciosContainer.querySelector('.service-card');
+    if (primeraTarjeta) {
+      primeraTarjeta.setAttribute('aria-pressed', 'true');
+    }
   }
 
   actualizarResumen();
