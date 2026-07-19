@@ -1,2 +1,13 @@
-.supabase/ 
-pasword_supabase_viziao-barber.txt 
+# Supabase CLI genera esta carpeta local con datos del proyecto vinculado
+# (project ref, connection strings, versiones). Nunca debe subirse.
+supabase/.temp/
+.supabase/
+
+# Archivos de contraseñas y variables de entorno locales
+pasword_supabase_viziao-barber.txt
+.env
+.env.local
+
+# Editores y archivos del sistema
+.vscode/
+.DS_Store
