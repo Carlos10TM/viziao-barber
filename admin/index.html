@@ -70,7 +70,6 @@
       <button type="button" class="admin-nav__item" data-panel="agendar">Agendar</button>
       <button type="button" class="admin-nav__item" data-panel="bloqueos-dias">Bloquear días</button>
       <button type="button" class="admin-nav__item" data-panel="bloqueos-horarios">Bloquear horas</button>
-      <button type="button" class="admin-nav__item" data-panel="sobrecupos">Sobrecupos</button>
       <button type="button" class="admin-nav__item" data-panel="servicios">Servicios</button>
       <button type="button" class="admin-nav__item" data-panel="horario">Horario</button>
     </nav>
@@ -163,6 +162,29 @@
           <span class="field__error" id="agendar-error"></span>
           <button type="submit" class="btn-confirm" id="btn-agendar-manual">Agendar cita</button>
         </form>
+
+        <h2 class="admin-panel__section-title">Sobrecupos</h2>
+        <p class="admin-panel__subtitle">Autoriza más de una cita en el mismo bloque de hora.</p>
+
+        <form id="form-sobrecupo" class="form-row form-row--inline" novalidate>
+          <div class="field">
+            <label for="sobrecupo-fecha">Fecha</label>
+            <input type="date" id="sobrecupo-fecha" required>
+          </div>
+          <div class="field">
+            <label for="sobrecupo-hora">Hora</label>
+            <select id="sobrecupo-hora" required></select>
+          </div>
+          <div class="field">
+            <label for="sobrecupo-cupos">Cupos extra</label>
+            <input type="number" id="sobrecupo-cupos" min="1" value="1" required>
+          </div>
+          <button type="submit" class="btn-add">Agregar</button>
+        </form>
+
+        <div class="admin-table" id="lista-sobrecupos">
+          <p class="admin-empty">Cargando...</p>
+        </div>
       </section>
 
       <!-- ---------------- BLOQUEAR DÍAS ---------------- -->
@@ -213,32 +235,6 @@
         </div>
       </section>
 
-      <!-- ---------------- SOBRECUPOS ---------------- -->
-      <section class="admin-panel" id="panel-sobrecupos" data-panel="sobrecupos" hidden>
-        <h1 class="admin-panel__title">Sobrecupos</h1>
-        <p class="admin-panel__subtitle">Autoriza más de una cita en el mismo bloque de hora.</p>
-
-        <form id="form-sobrecupo" class="form-row form-row--inline" novalidate>
-          <div class="field">
-            <label for="sobrecupo-fecha">Fecha</label>
-            <input type="date" id="sobrecupo-fecha" required>
-          </div>
-          <div class="field">
-            <label for="sobrecupo-hora">Hora</label>
-            <select id="sobrecupo-hora" required></select>
-          </div>
-          <div class="field">
-            <label for="sobrecupo-cupos">Cupos extra</label>
-            <input type="number" id="sobrecupo-cupos" min="1" value="1" required>
-          </div>
-          <button type="submit" class="btn-add">Agregar</button>
-        </form>
-
-        <div class="admin-table" id="lista-sobrecupos">
-          <p class="admin-empty">Cargando...</p>
-        </div>
-      </section>
-
       <!-- ---------------- SERVICIOS ---------------- -->
       <section class="admin-panel" id="panel-servicios" data-panel="servicios" hidden>
         <h1 class="admin-panel__title">Servicios</h1>
@@ -264,7 +260,7 @@
       <!-- ---------------- HORARIO SEMANAL ---------------- -->
       <section class="admin-panel" id="panel-horario" data-panel="horario" hidden>
         <h1 class="admin-panel__title">Horario semanal</h1>
-        <p class="admin-panel__subtitle">Define qué días trabajas y el rango de horas de atención.</p>
+        <p class="admin-panel__subtitle">Define qué días trabajas y el rango de horas de atención. La hora de término es el último bloque que se puede reservar.</p>
 
         <form id="form-horario" class="form-grid" novalidate>
           <div class="field">
@@ -277,7 +273,7 @@
               <select id="horario-inicio"></select>
             </div>
             <div class="field">
-              <label for="horario-fin">Hora de término (último bloque)</label>
+              <label for="horario-fin">Hora de término</label>
               <select id="horario-fin"></select>
             </div>
           </div>

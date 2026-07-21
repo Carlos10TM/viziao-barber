@@ -64,6 +64,12 @@ const CODIGOS_PAISES = [
 
 const NOMBRES_DIA = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
 
+// Orden de los chips en la pestaña "Horario": lunes a domingo. Los índices
+// siguen siendo los de Date.getDay() (0 = domingo) porque así se guardan
+// en dias_habiles y así los usa formatearFechaCorta(); solo cambia el
+// orden en que se dibujan los botones.
+const ORDEN_DIAS_CHIP = [1, 2, 3, 4, 5, 6, 0];
+
 
 /* =========================================================================
    3. REFERENCIAS AL DOM
@@ -221,19 +227,28 @@ el.loginForm.addEventListener('submit', async (evento) => {
   mostrarError(el.loginError, '');
   el.btnLogin.disabled = true;
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email: el.loginEmail.value.trim(),
-    password: el.loginPassword.value,
-  });
+  try {
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email: el.loginEmail.value.trim(),
+      password: el.loginPassword.value,
+    });
 
-  el.btnLogin.disabled = false;
+    if (error) {
+      mostrarError(el.loginError, 'Email o contraseña incorrectos.');
+      return;
+    }
 
-  if (error) {
-    mostrarError(el.loginError, 'Email o contraseña incorrectos.');
-    return;
+    el.loginPassword.value = '';
+  } catch (err) {
+    // Si falla la conexión (red, CORS, etc.) signInWithPassword puede
+    // rechazar la promesa en vez de resolver con { error } — sin este
+    // catch el botón quedaba deshabilitado para siempre y no se mostraba
+    // ningún mensaje, como si el login "no hiciera nada".
+    console.error('Error de conexión al iniciar sesión:', err);
+    mostrarError(el.loginError, 'No pudimos conectar. Revisa tu conexión e intenta nuevamente.');
+  } finally {
+    el.btnLogin.disabled = false;
   }
-
-  el.loginPassword.value = '';
 });
 
 el.btnLogout.addEventListener('click', () => supabaseClient.auth.signOut());
@@ -828,11 +843,11 @@ async function cargarHorario() {
 
 function renderDiasSemana() {
   el.diasSemana.innerHTML = '';
-  NOMBRES_DIA.forEach((nombre, dia) => {
+  ORDEN_DIAS_CHIP.forEach((dia) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'dia-chip';
-    btn.textContent = nombre;
+    btn.textContent = NOMBRES_DIA[dia];
     btn.dataset.dia = dia;
     btn.setAttribute('aria-pressed', state.horario.diasHabiles.includes(dia) ? 'true' : 'false');
     btn.addEventListener('click', () => {

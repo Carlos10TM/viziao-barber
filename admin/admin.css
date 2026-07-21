@@ -227,9 +227,21 @@ body{ padding-bottom: 40px; }
 /* =========================================================
    Formularios de gestión (bloqueos, sobrecupos, servicios)
    ========================================================= */
+
+/* styles.css vuelve .form-grid de 2 columnas desde 640px (pensado para el
+   formulario público, que solo usa .field sueltos). Los formularios del
+   admin mezclan .field sueltos con .form-row (que ya trae su propia grilla
+   de 2 columnas interna), así que en escritorio terminaban reordenados y
+   descuadrados. Los mantenemos en una sola columna siempre. */
+.login-card .form-grid,
+.admin-panel .form-grid{
+  grid-template-columns: 1fr;
+}
+
 .form-row{
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-items: end;
   gap: 12px;
 }
 

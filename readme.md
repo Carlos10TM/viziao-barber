@@ -213,10 +213,10 @@ El barbero gestiona todo el negocio desde `/admin`, sin tocar código:
 - **Citas**: listado de próximas citas confirmadas, con opción de cancelar.
 - **Agendar**: crea una cita manualmente (ej. alguien que reservó por
   teléfono) — usa la misma función `reservar_cita()` que el sitio público,
-  así que respeta bloqueos y cupos.
+  así que respeta bloqueos y cupos. En la misma pestaña, más abajo, están
+  los **sobrecupos** (autorizar más de una cita en un mismo bloque de hora).
 - **Bloquear días**: cierra un día completo (vacaciones, día libre, etc.).
 - **Bloquear horas**: cierra un bloque de hora puntual sin cerrar todo el día.
-- **Sobrecupos**: autoriza más de una cita en un mismo bloque de hora.
 - **Servicios**: agrega o desactiva servicios. La duración queda fija en 60
   minutos para todos — es una regla del sistema (`generarBloquesHora()`
   asume citas de 1 hora), no un campo editable.
