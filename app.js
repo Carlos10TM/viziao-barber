@@ -35,33 +35,25 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
    2. DATOS DE NEGOCIO — fácil de editar/ampliar
    ========================================================================= */
  
-// Para agregar un nuevo servicio en el futuro, solo copia un objeto de este
-// arreglo y ajusta sus valores. El resto del código lo renderiza solo.
-const SERVICIOS = [
-  {
-    id: 'corte-cabello',
-    nombre: 'Corte de cabello',
-    precio: 18000,       // CLP
-    duracionMin: 60,
-    activo: true,
-  },
-  // {
-  //   id: 'corte-barba',
-  //   nombre: 'Corte + Barba',
-  //   precio: 25000,
-  //   duracionMin: 60,
-  //   activo: true,
-  // },
-];
- 
-// Reglas de horario del negocio.
+// Los servicios y el horario semanal ahora los administra el barbero desde
+// /admin — se cargan de Supabase en cargarServicios()/cargarHorarioNegocio()
+// (ver sección 13, INICIALIZACIÓN). Estos son solo los valores por defecto
+// mientras esos fetch terminan.
+let SERVICIOS = [];
+
+// Reglas de horario del negocio. diasHabiles/horaInicio/horaFin se
+// sobrescriben con lo que el barbero configuró en /admin (tabla
+// horario_negocio); intervaloMin y diasAMostrar quedan fijos en el frontend.
 const HORARIO = {
   diasHabiles: [1, 2, 3, 4, 5, 6], // 0 = domingo ... 6 = sábado (domingo cerrado)
   horaInicio: 10,                  // primer bloque: 10:00
   horaFin: 20,                     // último bloque de INICIO: 20:00 (termina 21:00)
-  intervaloMin: 60,                // duración fija de cada cita
+  intervaloMin: 60,                // duración fija de cada cita (todos los servicios duran 60 min)
   diasAMostrar: 21,                // cuántos días futuros se listan en la tira de fechas
 };
+
+// Días puntuales bloqueados por el barbero (ver cargarDiasBloqueados()).
+let diasBloqueadosSet = new Set();
  
 const CODIGOS_PAISES = [
   { code: '+56', flag: '🇨🇱', name: 'CL' },
@@ -194,7 +186,32 @@ function telefonoValido(valor) {
 /* =========================================================================
    6. RENDER — SERVICIOS
    ========================================================================= */
- 
+
+/** Trae los servicios activos desde Supabase (los administra el barbero en
+ *  /admin). Si falla, SERVICIOS queda vacío y renderServicios() no muestra
+ *  nada — mejor eso que reservar con datos de precio/nombre desactualizados. */
+async function cargarServicios() {
+  const { data, error } = await supabaseClient
+    .from('servicios')
+    .select('id, nombre, precio, duracion_min, activo')
+    .eq('activo', true)
+    .order('orden');
+
+  if (error) {
+    console.error('Error al cargar servicios:', error);
+    mostrarToast('No pudimos cargar los servicios. Recarga la página.');
+    return;
+  }
+
+  SERVICIOS = data.map((s) => ({
+    id: s.id,
+    nombre: s.nombre,
+    precio: s.precio,
+    duracionMin: s.duracion_min,
+    activo: s.activo,
+  }));
+}
+
 function renderServicios() {
   el.serviciosContainer.innerHTML = '';
   const activos = SERVICIOS.filter((s) => s.activo);
@@ -239,19 +256,59 @@ function seleccionarServicio(servicio, cardEl) {
 /* =========================================================================
    7. RENDER — SELECTOR DE DÍA
    ========================================================================= */
- 
+
+/** Trae el horario semanal configurado por el barbero en /admin y lo aplica
+ *  sobre HORARIO. Si falla, se quedan los valores por defecto de arriba. */
+async function cargarHorarioNegocio() {
+  const { data, error } = await supabaseClient
+    .from('horario_negocio')
+    .select('dias_habiles, hora_inicio, hora_fin')
+    .single();
+
+  if (error) {
+    console.error('Error al cargar el horario del negocio:', error);
+    return;
+  }
+
+  HORARIO.diasHabiles = data.dias_habiles;
+  HORARIO.horaInicio = data.hora_inicio;
+  HORARIO.horaFin = data.hora_fin;
+}
+
+/** Trae los días puntuales que el barbero bloqueó (vacaciones, día libre,
+ *  etc.) dentro del rango de fechas que se muestra en la tira de días. */
+async function cargarDiasBloqueados() {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const limite = new Date(hoy);
+  limite.setDate(hoy.getDate() + HORARIO.diasAMostrar);
+
+  const { data, error } = await supabaseClient
+    .from('bloqueos_dias')
+    .select('fecha')
+    .gte('fecha', toFechaISO(hoy))
+    .lt('fecha', toFechaISO(limite));
+
+  if (error) {
+    console.error('Error al cargar días bloqueados:', error);
+    return;
+  }
+
+  diasBloqueadosSet = new Set(data.map((fila) => fila.fecha));
+}
+
 function renderDayStrip() {
   el.dayStrip.innerHTML = '';
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const hoyISO = toFechaISO(hoy);
- 
+
   for (let i = 0; i < HORARIO.diasAMostrar; i++) {
     const fecha = new Date(hoy);
     fecha.setDate(hoy.getDate() + i);
- 
+
     const fechaISO = toFechaISO(fecha);
-    const esCerrado = !HORARIO.diasHabiles.includes(fecha.getDay()); // domingo
+    const esCerrado = !HORARIO.diasHabiles.includes(fecha.getDay()) || diasBloqueadosSet.has(fechaISO);
     const esHoy = fechaISO === hoyISO;
  
     const chip = document.createElement('button');
@@ -330,47 +387,66 @@ async function seleccionarDia(fechaISO, chipEl) {
    8. RENDER — SELECTOR DE HORA (consulta horas ocupadas en Supabase)
    ========================================================================= */
  
-/** Consulta en Supabase qué horas ya están reservadas para una fecha dada. */
-async function obtenerHorasOcupadas(fechaISO) {
-  const { data, error } = await supabaseClient
-    .from('citas')
-    .select('hora')
-    .eq('fecha', fechaISO);
- 
-  if (error) {
-    console.error('Error al consultar horas ocupadas:', error);
+/** Consulta en Supabase la disponibilidad de cada bloque de hora para una fecha:
+ *  cuántas citas activas ya lo ocupan, si el barbero lo bloqueó puntualmente y
+ *  cuántos cupos extra (sobrecupo) tiene autorizados. */
+async function obtenerDisponibilidadHoras(fechaISO) {
+  // Sin filtro por 'estado': anon solo tiene grant de select sobre
+  // (fecha, hora) en citas — la policy RLS ya restringe las filas visibles
+  // a estado='confirmada' del lado del servidor, así que filtrar también
+  // por esa columna aquí rompería con un 401 (permiso de columna).
+  const [citasRes, bloqueosRes, sobrecuposRes] = await Promise.all([
+    supabaseClient.from('citas').select('hora').eq('fecha', fechaISO),
+    supabaseClient.from('bloqueos_horarios').select('hora').eq('fecha', fechaISO),
+    supabaseClient.from('sobrecupos').select('hora, cupos_extra').eq('fecha', fechaISO),
+  ]);
+
+  if (citasRes.error || bloqueosRes.error || sobrecuposRes.error) {
+    console.error('Error al consultar disponibilidad:', citasRes.error || bloqueosRes.error || sobrecuposRes.error);
     mostrarToast('No pudimos cargar los horarios. Revisa tu conexión.');
-    return [];
+    return { ocupadasPorHora: new Map(), horasBloqueadas: new Set(), cuposExtraPorHora: new Map() };
   }
- 
-  return data.map((fila) => fila.hora);
+
+  const ocupadasPorHora = new Map();
+  citasRes.data.forEach((fila) => {
+    ocupadasPorHora.set(fila.hora, (ocupadasPorHora.get(fila.hora) ?? 0) + 1);
+  });
+
+  const horasBloqueadas = new Set(bloqueosRes.data.map((fila) => fila.hora));
+
+  const cuposExtraPorHora = new Map();
+  sobrecuposRes.data.forEach((fila) => cuposExtraPorHora.set(fila.hora, fila.cupos_extra));
+
+  return { ocupadasPorHora, horasBloqueadas, cuposExtraPorHora };
 }
- 
+
 async function renderHoursGrid(fechaISO) {
   el.hoursGrid.setAttribute('aria-busy', 'true');
   el.hoursGrid.innerHTML = '<p class="hours-grid__empty">Cargando horarios...</p>';
- 
-  const [horasOcupadas] = await Promise.all([
-    obtenerHorasOcupadas(fechaISO),
+
+  const [{ ocupadasPorHora, horasBloqueadas, cuposExtraPorHora }] = await Promise.all([
+    obtenerDisponibilidadHoras(fechaISO),
     new Promise((r) => setTimeout(r, 150)), // pequeño respiro visual de carga
   ]);
- 
+
   el.hoursGrid.innerHTML = '';
- 
+
   const bloques = generarBloquesHora();
   const hoyISO = toFechaISO(new Date());
   const esHoy = fechaISO === hoyISO;
   const horaActual = new Date().getHours();
- 
+
   let quedanDisponibles = false;
- 
+
   bloques.forEach((hora) => {
     const horaNum = parseInt(hora, 10);
-    const ocupada = horasOcupadas.includes(hora);
+    const cupos = 1 + (cuposExtraPorHora.get(hora) ?? 0);
+    const ocupadas = ocupadasPorHora.get(hora) ?? 0;
+    const bloqueada = horasBloqueadas.has(hora);
     // Si el día seleccionado es hoy, también se bloquean los bloques que ya pasaron.
     const yaPaso = esHoy && horaNum <= horaActual;
-    const disponible = !ocupada && !yaPaso;
- 
+    const disponible = !bloqueada && !yaPaso && ocupadas < cupos;
+
     if (disponible) quedanDisponibles = true;
  
     const btn = document.createElement('button');
@@ -580,7 +656,8 @@ async function insertarCita(payload) {
   }
 
   if (!data.ok) {
-    // Falla "de negocio": token inválido, hora ya ocupada (23505), etc.
+    // Falla "de negocio": token inválido, día/hora bloqueados (VZ001), cupo
+    // lleno (VZ002), etc. — ver reservar_cita() en supabase/migrations.
     return { error: { code: data.code, message: data.message } };
   }
 
@@ -641,18 +718,19 @@ async function confirmarYEnviar() {
 
   if (error) {
     console.error('Error al insertar la cita:', error);
-    // El código 23505 es "unique_violation": alguien tomó ese bloque justo
-    // antes que tú (protección definida en el schema SQL del README).
+    // VZ001: el barbero bloqueó ese día/hora justo antes que confirmaras.
+    // VZ002: alguien más tomó el último cupo de ese bloque justo antes que tú.
     // TURNSTILE_INVALID lo devuelve la Edge Function si el token no pasó
     // la verificación con Cloudflare (o expiró mientras completabas el form).
     let mensaje = 'No pudimos guardar tu cita. Intenta nuevamente.';
-    if (error.code === '23505') mensaje = 'Justo se ocupó esa hora. Elige otra, por favor.';
+    if (error.code === 'VZ001') mensaje = 'Ese horario ya no está disponible. Elige otro, por favor.';
+    if (error.code === 'VZ002') mensaje = 'Justo se ocupó esa hora. Elige otra, por favor.';
     if (error.code === 'TURNSTILE_INVALID') mensaje = 'No pudimos verificar que eres humano. Intenta de nuevo.';
 
     cerrarModalConfirmacion();
     mostrarToast(mensaje);
 
-    if (error.code === '23505') {
+    if (error.code === 'VZ001' || error.code === 'VZ002') {
       state.hora = null; // esa hora ya no está disponible, hay que elegir otra
       await renderHoursGrid(payload.fecha);
     }
@@ -760,14 +838,19 @@ function renderContacto() {
    13. INICIALIZACIÓN
    ========================================================================= */
  
-function init() {
+async function init() {
   el.footerYear.textContent = new Date().getFullYear();
-  renderServicios();
-  renderDayStrip();
   renderCodigosPais();
   renderContacto();
 
+  // Datos que administra el barbero desde /admin — se cargan antes de
+  // renderizar servicios y días porque esas vistas dependen de ellos.
+  await Promise.all([cargarServicios(), cargarHorarioNegocio(), cargarDiasBloqueados()]);
+
+  renderServicios();
+  renderDayStrip();
+
   actualizarResumen();
 }
- 
+
 init();

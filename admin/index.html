@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Panel admin — Viziao Barber</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A0A0C">
+
+  <!-- Tipografías -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- Resplandor ambiental de fondo (mismo look que el sitio público) -->
+  <div class="ambient-glow ambient-glow--purple" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow--gold" aria-hidden="true"></div>
+
+  <!-- ===================================================================
+       LOGIN
+       =================================================================== -->
+  <main id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="top-bar__logo login-card__logo">
+        <svg class="top-bar__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm14-6L8 18M8 6l4 4m0 4-4 4M20 18 8 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="top-bar__wordmark">VIZIAO<span class="top-bar__wordmark-sub">BARBER</span></span>
+      </div>
+      <p class="login-card__subtitle">Panel del barbero</p>
+
+      <form id="login-form" class="form-grid" novalidate>
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" autocomplete="current-password" required>
+          <span class="field__error" id="login-error"></span>
+        </div>
+        <button type="submit" class="btn-confirm" id="btn-login">Entrar</button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ===================================================================
+       PANEL ADMIN
+       =================================================================== -->
+  <div id="admin-app" hidden>
+
+    <header class="top-bar">
+      <div class="top-bar__logo">
+        <svg class="top-bar__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm14-6L8 18M8 6l4 4m0 4-4 4M20 18 8 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="top-bar__wordmark">VIZIAO<span class="top-bar__wordmark-sub">ADMIN</span></span>
+      </div>
+      <button type="button" class="btn-logout" id="btn-logout">Cerrar sesión</button>
+    </header>
+
+    <nav class="admin-nav" id="admin-nav" aria-label="Secciones del panel">
+      <button type="button" class="admin-nav__item" data-panel="resumen" aria-current="page">Resumen</button>
+      <button type="button" class="admin-nav__item" data-panel="citas">Citas</button>
+      <button type="button" class="admin-nav__item" data-panel="agendar">Agendar</button>
+      <button type="button" class="admin-nav__item" data-panel="bloqueos-dias">Bloquear días</button>
+      <button type="button" class="admin-nav__item" data-panel="bloqueos-horarios">Bloquear horas</button>
+      <button type="button" class="admin-nav__item" data-panel="sobrecupos">Sobrecupos</button>
+      <button type="button" class="admin-nav__item" data-panel="servicios">Servicios</button>
+      <button type="button" class="admin-nav__item" data-panel="horario">Horario</button>
+    </nav>
+
+    <main class="admin-main">
+
+      <!-- ---------------- RESUMEN DEL DÍA ---------------- -->
+      <section class="admin-panel" id="panel-resumen" data-panel="resumen">
+        <h1 class="admin-panel__title">Resumen del día</h1>
+        <p class="admin-panel__subtitle" id="resumen-fecha"></p>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <span class="stat-card__value" id="resumen-total">0</span>
+            <span class="stat-card__label">Citas hoy</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__value" id="resumen-ingresos">$0</span>
+            <span class="stat-card__label">Ingresos estimados</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__value" id="resumen-proxima">—</span>
+            <span class="stat-card__label">Próxima cita</span>
+          </div>
+        </div>
+
+        <h2 class="admin-panel__section-title">Citas de hoy</h2>
+        <div class="citas-list" id="resumen-lista">
+          <p class="admin-empty">Cargando...</p>
+        </div>
+      </section>
+
+      <!-- ---------------- CITAS ---------------- -->
+      <section class="admin-panel" id="panel-citas" data-panel="citas" hidden>
+        <h1 class="admin-panel__title">Citas agendadas</h1>
+        <p class="admin-panel__subtitle">Próximas citas confirmadas, de hoy en adelante.</p>
+        <div class="citas-list" id="citas-lista">
+          <p class="admin-empty">Cargando...</p>
+        </div>
+      </section>
+
+      <!-- ---------------- AGENDAR MANUALMENTE ---------------- -->
+      <section class="admin-panel" id="panel-agendar" data-panel="agendar" hidden>
+        <h1 class="admin-panel__title">Agendar cita manual</h1>
+        <p class="admin-panel__subtitle">Se guarda igual que una reserva del sitio público, respetando bloqueos y cupos.</p>
+
+        <form id="form-agendar" class="form-grid" novalidate>
+          <div class="field">
+            <label for="agendar-servicio">Servicio</label>
+            <select id="agendar-servicio" required></select>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="agendar-fecha">Fecha</label>
+              <input type="date" id="agendar-fecha" required>
+            </div>
+            <div class="field">
+              <label for="agendar-hora">Hora</label>
+              <select id="agendar-hora" required></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="agendar-nombre">Nombre</label>
+              <input type="text" id="agendar-nombre" required>
+            </div>
+            <div class="field">
+              <label for="agendar-apellido">Apellido</label>
+              <input type="text" id="agendar-apellido" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="agendar-codigo-pais">País</label>
+              <select id="agendar-codigo-pais"></select>
+            </div>
+            <div class="field">
+              <label for="agendar-telefono">Teléfono</label>
+              <input type="tel" id="agendar-telefono" required>
+            </div>
+          </div>
+          <div class="field">
+            <label for="agendar-email">Email</label>
+            <input type="email" id="agendar-email" required>
+          </div>
+          <div class="field">
+            <label for="agendar-observaciones">Observaciones <span class="field__optional">(opcional)</span></label>
+            <textarea id="agendar-observaciones"></textarea>
+          </div>
+          <span class="field__error" id="agendar-error"></span>
+          <button type="submit" class="btn-confirm" id="btn-agendar-manual">Agendar cita</button>
+        </form>
+      </section>
+
+      <!-- ---------------- BLOQUEAR DÍAS ---------------- -->
+      <section class="admin-panel" id="panel-bloqueos-dias" data-panel="bloqueos-dias" hidden>
+        <h1 class="admin-panel__title">Bloquear días completos</h1>
+        <p class="admin-panel__subtitle">El sitio público no mostrará estos días como disponibles.</p>
+
+        <form id="form-bloqueo-dia" class="form-row form-row--inline" novalidate>
+          <div class="field">
+            <label for="bloqueo-dia-fecha">Fecha</label>
+            <input type="date" id="bloqueo-dia-fecha" required>
+          </div>
+          <div class="field field--grow">
+            <label for="bloqueo-dia-motivo">Motivo <span class="field__optional">(opcional)</span></label>
+            <input type="text" id="bloqueo-dia-motivo" placeholder="Ej: vacaciones">
+          </div>
+          <button type="submit" class="btn-add">Bloquear</button>
+        </form>
+
+        <div class="admin-table" id="lista-bloqueos-dias">
+          <p class="admin-empty">Cargando...</p>
+        </div>
+      </section>
+
+      <!-- ---------------- BLOQUEAR HORARIOS ---------------- -->
+      <section class="admin-panel" id="panel-bloqueos-horarios" data-panel="bloqueos-horarios" hidden>
+        <h1 class="admin-panel__title">Bloquear horas puntuales</h1>
+        <p class="admin-panel__subtitle">Bloquea un bloque de hora específico sin cerrar todo el día.</p>
+
+        <form id="form-bloqueo-horario" class="form-row form-row--inline" novalidate>
+          <div class="field">
+            <label for="bloqueo-horario-fecha">Fecha</label>
+            <input type="date" id="bloqueo-horario-fecha" required>
+          </div>
+          <div class="field">
+            <label for="bloqueo-horario-hora">Hora</label>
+            <select id="bloqueo-horario-hora" required></select>
+          </div>
+          <div class="field field--grow">
+            <label for="bloqueo-horario-motivo">Motivo <span class="field__optional">(opcional)</span></label>
+            <input type="text" id="bloqueo-horario-motivo">
+          </div>
+          <button type="submit" class="btn-add">Bloquear</button>
+        </form>
+
+        <div class="admin-table" id="lista-bloqueos-horarios">
+          <p class="admin-empty">Cargando...</p>
+        </div>
+      </section>
+
+      <!-- ---------------- SOBRECUPOS ---------------- -->
+      <section class="admin-panel" id="panel-sobrecupos" data-panel="sobrecupos" hidden>
+        <h1 class="admin-panel__title">Sobrecupos</h1>
+        <p class="admin-panel__subtitle">Autoriza más de una cita en el mismo bloque de hora.</p>
+
+        <form id="form-sobrecupo" class="form-row form-row--inline" novalidate>
+          <div class="field">
+            <label for="sobrecupo-fecha">Fecha</label>
+            <input type="date" id="sobrecupo-fecha" required>
+          </div>
+          <div class="field">
+            <label for="sobrecupo-hora">Hora</label>
+            <select id="sobrecupo-hora" required></select>
+          </div>
+          <div class="field">
+            <label for="sobrecupo-cupos">Cupos extra</label>
+            <input type="number" id="sobrecupo-cupos" min="1" value="1" required>
+          </div>
+          <button type="submit" class="btn-add">Agregar</button>
+        </form>
+
+        <div class="admin-table" id="lista-sobrecupos">
+          <p class="admin-empty">Cargando...</p>
+        </div>
+      </section>
+
+      <!-- ---------------- SERVICIOS ---------------- -->
+      <section class="admin-panel" id="panel-servicios" data-panel="servicios" hidden>
+        <h1 class="admin-panel__title">Servicios</h1>
+        <p class="admin-panel__subtitle">La duración está fija en 60 minutos para todos los servicios — es una regla del sistema, no editable aquí.</p>
+
+        <form id="form-servicio" class="form-row form-row--inline" novalidate>
+          <div class="field field--grow">
+            <label for="servicio-nombre">Nombre</label>
+            <input type="text" id="servicio-nombre" required>
+          </div>
+          <div class="field">
+            <label for="servicio-precio">Precio (CLP)</label>
+            <input type="number" id="servicio-precio" min="1" required>
+          </div>
+          <button type="submit" class="btn-add">Agregar</button>
+        </form>
+
+        <div class="admin-table" id="lista-servicios">
+          <p class="admin-empty">Cargando...</p>
+        </div>
+      </section>
+
+      <!-- ---------------- HORARIO SEMANAL ---------------- -->
+      <section class="admin-panel" id="panel-horario" data-panel="horario" hidden>
+        <h1 class="admin-panel__title">Horario semanal</h1>
+        <p class="admin-panel__subtitle">Define qué días trabajas y el rango de horas de atención.</p>
+
+        <form id="form-horario" class="form-grid" novalidate>
+          <div class="field">
+            <label>Días hábiles</label>
+            <div class="dias-semana" id="dias-semana"></div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="horario-inicio">Hora de inicio</label>
+              <select id="horario-inicio"></select>
+            </div>
+            <div class="field">
+              <label for="horario-fin">Hora de término (último bloque)</label>
+              <select id="horario-fin"></select>
+            </div>
+          </div>
+          <span class="field__error" id="horario-error"></span>
+          <button type="submit" class="btn-confirm">Guardar horario</button>
+        </form>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin.js" type="module"></script>
+</body>
+</html>

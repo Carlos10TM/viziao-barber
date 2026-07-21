@@ -83,13 +83,28 @@ serve(async (req) => {
     if (campo in resto) cita[campo] = resto[campo];
   }
 
-  // 3. Insertar con el service_role — el único que puede escribir en 'citas'.
-  const { data, error } = await supabaseAdmin.from('citas').insert([cita]).select();
+  // 3. Reservar vía reservar_cita() — hace el chequeo de bloqueos/cupos y el
+  //    insert de forma atómica (ver supabase/migrations/0001_panel_admin.sql).
+  //    Se llama con el service_role porque el cliente público no tiene
+  //    permiso de ejecutar esta función (solo 'authenticated', el panel admin).
+  const { data, error } = await supabaseAdmin.rpc('reservar_cita', {
+    p_nombre: cita.nombre,
+    p_apellido: cita.apellido,
+    p_codigo_pais: cita.codigo_pais,
+    p_telefono: cita.telefono,
+    p_email: cita.email,
+    p_observaciones: cita.observaciones ?? null,
+    p_servicio_id: cita.servicio_id,
+    p_servicio_nombre: cita.servicio_nombre,
+    p_precio: cita.precio,
+    p_fecha: cita.fecha,
+    p_hora: cita.hora,
+  });
 
   if (error) {
-    console.error('Error al insertar la cita:', error);
+    console.error('Error al reservar la cita:', error);
     return responder({ ok: false, code: error.code, message: error.message }, 200);
   }
 
-  return responder({ ok: true, data });
+  return responder({ ok: true, data: [data] });
 });
