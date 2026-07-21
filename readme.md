@@ -14,7 +14,8 @@ viziao-barber/
 │   └── admin.js
 ├── supabase/
 │   ├── migrations/
-│   │   └── 0001_panel_admin.sql   ← Tablas del panel admin + reservar_cita()
+│   │   ├── 0001_panel_admin.sql   ← Tablas del panel admin + reservar_cita()
+│   │   └── 0002_servicios_descripcion.sql   ← Columna 'descripcion' en servicios
 │   └── functions/
 │       ├── crear-cita/
 │       │   └── index.ts   ← Edge Function: verifica Turnstile e inserta la cita
@@ -50,12 +51,17 @@ En un proyecto nuevo, ejecuta en el SQL Editor de Supabase, en este orden:
    agrega la columna `estado`, las tablas del panel admin (`servicios`,
    `bloqueos_dias`, `bloqueos_horarios`, `sobrecupos`, `horario_negocio`) y la
    función `reservar_cita()`.
+4. Ejecuta
+   [`supabase/migrations/0002_servicios_descripcion.sql`](supabase/migrations/0002_servicios_descripcion.sql) —
+   agrega la columna opcional `descripcion` a `servicios`.
 
 Con la [CLI de Supabase](https://supabase.com/docs/guides/cli) enlazada al
-proyecto (`supabase link --project-ref TU-PROYECTO`), el paso 3 se hace con:
+proyecto (`supabase link --project-ref TU-PROYECTO`), los pasos 3 y 4 se
+hacen con:
 
 ```bash
 supabase db query --linked --file supabase/migrations/0001_panel_admin.sql
+supabase db query --linked --file supabase/migrations/0002_servicios_descripcion.sql
 ```
 
 ### 2.2 Tabla base `citas`
@@ -217,7 +223,9 @@ El barbero gestiona todo el negocio desde `/admin`, sin tocar código:
   los **sobrecupos** (autorizar más de una cita en un mismo bloque de hora).
 - **Bloquear días**: cierra un día completo (vacaciones, día libre, etc.).
 - **Bloquear horas**: cierra un bloque de hora puntual sin cerrar todo el día.
-- **Servicios**: agrega o desactiva servicios. La duración queda fija en 60
+- **Servicios**: agrega, edita (nombre, precio y una descripción opcional) o
+  desactiva servicios. La descripción, si existe, se muestra también en el
+  sitio público bajo el nombre del servicio. La duración queda fija en 60
   minutos para todos — es una regla del sistema (`generarBloquesHora()`
   asume citas de 1 hora), no un campo editable.
 - **Horario**: define qué días de la semana atiendes y el rango de horas.

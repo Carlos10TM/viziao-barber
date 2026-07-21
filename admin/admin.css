@@ -139,7 +139,10 @@ body{ padding-bottom: 40px; }
    ========================================================= */
 .stats-row{
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0, 1fr), no solo 1fr: sin el mínimo en 0 cada columna respeta el
+     ancho mínimo de su contenido, y un monto largo en "Ingresos" empujaba
+     esa columna más ancha que las otras dos (quedaban descuadradas). */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -147,17 +150,19 @@ body{ padding-bottom: 40px; }
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 16px 12px;
+  padding: 16px 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   text-align: center;
+  min-width: 0;
 }
 
 .stat-card__value{
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 20px;
   color: var(--color-gold);
+  overflow-wrap: break-word;
 }
 
 .stat-card__label{
@@ -286,13 +291,23 @@ body{ padding-bottom: 40px; }
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
 }
 
-.admin-table__info{ font-size: 13px; color: var(--color-text); min-width: 0; }
+/* flex-basis 200 le da una anchura mínima cómoda antes de que las acciones
+   bajen a su propia línea (ver .admin-table__actions) — sin esto, filas con
+   texto largo (ej. servicios con descripción) y 2 botones de acción
+   terminaban comprimiendo el texto a una columna angosta en celulares. */
+.admin-table__info{ font-size: 13px; color: var(--color-text); flex: 1 1 200px; min-width: 0; }
 .admin-table__meta{ font-size: 12px; color: var(--color-text-dim); }
+.admin-table__descripcion{
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-faint);
+}
 
 .admin-table__row--inactivo{ opacity: 0.5; }
 
@@ -314,7 +329,7 @@ body{ padding-bottom: 40px; }
 .btn-table-action--danger{ border-color: var(--color-danger); color: var(--color-danger); }
 .btn-table-action--danger:hover{ background: rgba(255, 77, 106, 0.12); }
 
-.admin-table__actions{ display: flex; gap: 8px; flex-shrink: 0; }
+.admin-table__actions{ display: flex; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 /* =========================================================
    Horario semanal

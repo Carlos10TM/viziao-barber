@@ -138,6 +138,9 @@ const el = {
   contactoWhatsapp: document.getElementById('contacto-whatsapp'),
   contactoMapa: document.getElementById('contacto-mapa'),
   contactoComoLlegar: document.getElementById('contacto-como-llegar'),
+
+  horarioHint: document.getElementById('horario-hint'),
+  contactoHorario: document.getElementById('contacto-horario'),
 };
  
  
@@ -193,7 +196,7 @@ function telefonoValido(valor) {
 async function cargarServicios() {
   const { data, error } = await supabaseClient
     .from('servicios')
-    .select('id, nombre, precio, duracion_min, activo')
+    .select('id, nombre, precio, duracion_min, activo, descripcion')
     .eq('activo', true)
     .order('orden');
 
@@ -209,6 +212,7 @@ async function cargarServicios() {
     precio: s.precio,
     duracionMin: s.duracion_min,
     activo: s.activo,
+    descripcion: s.descripcion,
   }));
 }
 
@@ -224,6 +228,7 @@ function renderServicios() {
     card.innerHTML = `
       <div class="service-card__info">
         <span class="service-card__name">${servicio.nombre}</span>
+        ${servicio.descripcion ? `<span class="service-card__desc">${servicio.descripcion}</span>` : ''}
         <span class="service-card__duration">${servicio.duracionMin} min</span>
       </div>
       <span class="service-card__price">${formatearPrecio(servicio.precio)}</span>
@@ -273,6 +278,47 @@ async function cargarHorarioNegocio() {
   HORARIO.diasHabiles = data.dias_habiles;
   HORARIO.horaInicio = data.hora_inicio;
   HORARIO.horaFin = data.hora_fin;
+}
+
+const NOMBRES_DIA_LARGO = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+/** Convierte [1,2,3,4,5,6] en "Lunes a sábado", agrupando días consecutivos
+ *  (lunes a domingo, no domingo a sábado) para que se lea de forma natural. */
+function formatearDiasHabiles(diasHabiles) {
+  if (diasHabiles.length === 7) return 'Todos los días';
+
+  const ordenSemana = [1, 2, 3, 4, 5, 6, 0];
+  const activos = new Set(diasHabiles);
+  const grupos = [];
+  let actual = null;
+  ordenSemana.forEach((dia) => {
+    if (activos.has(dia)) {
+      if (actual) actual.push(dia);
+      else { actual = [dia]; grupos.push(actual); }
+    } else {
+      actual = null;
+    }
+  });
+
+  const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const textoGrupos = grupos.map((grupo) => grupo.length === 1
+    ? capitalizar(NOMBRES_DIA_LARGO[grupo[0]])
+    : `${capitalizar(NOMBRES_DIA_LARGO[grupo[0]])} a ${NOMBRES_DIA_LARGO[grupo[grupo.length - 1]]}`);
+
+  if (textoGrupos.length <= 1) return textoGrupos[0] ?? '';
+  const ultimo = textoGrupos.pop();
+  return `${textoGrupos.join(', ')} y ${ultimo}`;
+}
+
+/** Refleja en los textos descriptivos del sitio (paso 2 y tarjeta de
+ *  contacto) el horario real cargado desde /admin — antes quedaban fijos
+ *  en el HTML y no se actualizaban aunque el barbero cambiara el horario. */
+function renderHorarioTexto() {
+  const dias = formatearDiasHabiles(HORARIO.diasHabiles);
+  const horas = `${String(HORARIO.horaInicio).padStart(2, '0')}:00 – ${String(HORARIO.horaFin + 1).padStart(2, '0')}:00`;
+  const texto = `${dias} · ${horas}`;
+  el.horarioHint.textContent = texto;
+  el.contactoHorario.textContent = texto;
 }
 
 /** Trae los días puntuales que el barbero bloqueó (vacaciones, día libre,
@@ -849,6 +895,7 @@ async function init() {
 
   renderServicios();
   renderDayStrip();
+  renderHorarioTexto();
 
   actualizarResumen();
 }

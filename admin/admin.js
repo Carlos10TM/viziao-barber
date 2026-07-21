@@ -130,6 +130,14 @@ const el = {
   servicioPrecio: document.getElementById('servicio-precio'),
   listaServicios: document.getElementById('lista-servicios'),
 
+  editarServicioBackdrop: document.getElementById('editar-servicio-backdrop'),
+  formEditarServicio: document.getElementById('form-editar-servicio'),
+  editarServicioNombre: document.getElementById('editar-servicio-nombre'),
+  editarServicioPrecio: document.getElementById('editar-servicio-precio'),
+  editarServicioDescripcion: document.getElementById('editar-servicio-descripcion'),
+  editarServicioError: document.getElementById('editar-servicio-error'),
+  btnCancelarEditarServicio: document.getElementById('btn-cancelar-editar-servicio'),
+
   formHorario: document.getElementById('form-horario'),
   diasSemana: document.getElementById('dias-semana'),
   horarioInicio: document.getElementById('horario-inicio'),
@@ -137,6 +145,11 @@ const el = {
   horarioError: document.getElementById('horario-error'),
 
   toast: document.getElementById('toast'),
+
+  confirmBackdrop: document.getElementById('admin-confirm-backdrop'),
+  confirmMensaje: document.getElementById('admin-confirm-mensaje'),
+  btnConfirmAceptar: document.getElementById('admin-confirm-aceptar'),
+  btnConfirmCancelar: document.getElementById('admin-confirm-cancelar'),
 };
 
 
@@ -178,17 +191,48 @@ function telefonoValido(valor) {
   return /^[0-9]{7,12}$/.test(valor.trim());
 }
 
+/** Un bloque de hora ya pasó si la fecha es hoy y su hora de inicio ya
+ *  llegó o quedó atrás — evita agendar/bloquear/dar sobrecupo en un
+ *  horario que ya no existe. */
+function horaYaPaso(fechaISO, hora) {
+  if (fechaISO !== toFechaISO(new Date())) return false;
+  return parseInt(hora, 10) <= new Date().getHours();
+}
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function emailValido(valor) {
   return EMAIL_REGEX.test(valor.trim());
 }
 
 let toastTimeout;
-function mostrarToast(mensaje) {
+function mostrarToast(mensaje, tipo = 'error') {
   clearTimeout(toastTimeout);
   el.toast.textContent = mensaje;
+  el.toast.classList.toggle('toast--exito', tipo === 'exito');
   el.toast.hidden = false;
   toastTimeout = setTimeout(() => { el.toast.hidden = true; }, 3800);
+}
+
+/** Reemplazo de window.confirm() con el modal propio del sitio (mismo
+ *  markup que usa el sitio público para confirmar una reserva), para no
+ *  depender del diálogo nativo del navegador. Se resuelve en true/false
+ *  según el botón que presione el barbero. */
+function confirmar(mensaje) {
+  return new Promise((resolve) => {
+    el.confirmMensaje.textContent = mensaje;
+    el.confirmBackdrop.hidden = false;
+
+    const limpiar = () => {
+      el.confirmBackdrop.hidden = true;
+      el.btnConfirmAceptar.removeEventListener('click', onAceptar);
+      el.btnConfirmCancelar.removeEventListener('click', onCancelar);
+    };
+    const onAceptar = () => { limpiar(); resolve(true); };
+    const onCancelar = () => { limpiar(); resolve(false); };
+
+    el.btnConfirmAceptar.addEventListener('click', onAceptar);
+    el.btnConfirmCancelar.addEventListener('click', onCancelar);
+  });
 }
 
 /** Consulta disponibilidad (igual que el sitio público) para deshabilitar en
@@ -325,7 +369,8 @@ function renderCitaCard(cita, { cancelable }) {
 }
 
 async function cancelarCita(id, btnEl) {
-  if (!window.confirm('¿Cancelar esta cita? El horario quedará disponible de nuevo.')) return;
+  const confirmado = await confirmar('¿Cancelar esta cita? El horario quedará disponible de nuevo.');
+  if (!confirmado) return;
 
   btnEl.disabled = true;
   const { error } = await supabaseClient.from('citas').update({ estado: 'cancelada' }).eq('id', id);
@@ -337,7 +382,7 @@ async function cancelarCita(id, btnEl) {
     return;
   }
 
-  mostrarToast('Cita cancelada.');
+  mostrarToast('Cita cancelada.', 'exito');
   renderResumen();
   renderCitas();
 }
@@ -438,8 +483,9 @@ async function renderAgendarHoraSelect() {
     const ocupadas = ocupadasPorHora.get(hora) ?? 0;
     const lleno = ocupadas >= cupos;
     const bloqueada = horasBloqueadas.has(hora);
-    const deshabilitado = lleno || bloqueada;
-    const etiqueta = bloqueada ? `${hora} (bloqueada)` : lleno ? `${hora} (sin cupo)` : hora;
+    const pasada = horaYaPaso(fechaISO, hora);
+    const deshabilitado = lleno || bloqueada || pasada;
+    const etiqueta = bloqueada ? `${hora} (bloqueada)` : lleno ? `${hora} (sin cupo)` : pasada ? `${hora} (pasada)` : hora;
     return `<option value="${hora}" ${deshabilitado ? 'disabled' : ''}>${etiqueta}</option>`;
   }).join('');
 }
@@ -452,6 +498,7 @@ el.formAgendar.addEventListener('submit', async (evento) => {
 
   const servicio = state.servicios.find((s) => s.id === el.agendarServicio.value);
   const telefono = el.agendarTelefono.value.trim();
+  const email = el.agendarEmail.value.trim();
 
   if (!servicio) return mostrarError(el.agendarError, 'Elige un servicio.');
   if (!el.agendarFecha.value) return mostrarError(el.agendarError, 'Elige una fecha.');
@@ -459,8 +506,11 @@ el.formAgendar.addEventListener('submit', async (evento) => {
   if (!el.agendarNombre.value.trim() || !el.agendarApellido.value.trim()) {
     return mostrarError(el.agendarError, 'Completa nombre y apellido.');
   }
-  if (!telefonoValido(telefono)) return mostrarError(el.agendarError, 'Ingresa un teléfono válido.');
-  if (!emailValido(el.agendarEmail.value)) return mostrarError(el.agendarError, 'Ingresa un email válido.');
+  // Teléfono y email quedan opcionales al agendar manualmente — el barbero
+  // suele tener solo el nombre de quien reservó por fuera del sitio. Si se
+  // ingresan igual, se validan.
+  if (telefono && !telefonoValido(telefono)) return mostrarError(el.agendarError, 'Ingresa un teléfono válido.');
+  if (email && !emailValido(email)) return mostrarError(el.agendarError, 'Ingresa un email válido.');
 
   el.btnAgendarManual.disabled = true;
 
@@ -469,7 +519,7 @@ el.formAgendar.addEventListener('submit', async (evento) => {
     p_apellido: el.agendarApellido.value.trim(),
     p_codigo_pais: el.agendarCodigoPais.value,
     p_telefono: telefono,
-    p_email: el.agendarEmail.value.trim(),
+    p_email: email,
     p_observaciones: el.agendarObservaciones.value.trim() || null,
     p_servicio_id: servicio.id,
     p_servicio_nombre: servicio.nombre,
@@ -490,7 +540,7 @@ el.formAgendar.addEventListener('submit', async (evento) => {
     return;
   }
 
-  mostrarToast('Cita agendada correctamente.');
+  mostrarToast('Cita agendada correctamente.', 'exito');
   el.formAgendar.reset();
   renderAgendarServicioSelect();
   renderAgendarCodigoPais();
@@ -567,7 +617,7 @@ el.formBloqueoDia.addEventListener('submit', async (evento) => {
   }
 
   el.formBloqueoDia.reset();
-  mostrarToast('Día bloqueado.');
+  mostrarToast('Día bloqueado.', 'exito');
   renderBloqueosDias();
 });
 
@@ -577,9 +627,15 @@ el.formBloqueoDia.addEventListener('submit', async (evento) => {
    ========================================================================= */
 
 function renderBloqueoHorarioHoraSelect() {
+  const fechaISO = el.bloqueoHorarioFecha.value;
   const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin);
-  el.bloqueoHorarioHora.innerHTML = bloques.map((h) => `<option value="${h}">${h}</option>`).join('');
+  el.bloqueoHorarioHora.innerHTML = bloques.map((hora) => {
+    const pasada = horaYaPaso(fechaISO, hora);
+    return `<option value="${hora}" ${pasada ? 'disabled' : ''}>${pasada ? `${hora} (pasada)` : hora}</option>`;
+  }).join('');
 }
+
+el.bloqueoHorarioFecha.addEventListener('change', renderBloqueoHorarioHoraSelect);
 
 async function renderBloqueosHorarios() {
   const hoyISO = toFechaISO(new Date());
@@ -650,7 +706,7 @@ el.formBloqueoHorario.addEventListener('submit', async (evento) => {
   }
 
   el.formBloqueoHorario.reset();
-  mostrarToast('Hora bloqueada.');
+  mostrarToast('Hora bloqueada.', 'exito');
   renderBloqueosHorarios();
 });
 
@@ -660,9 +716,15 @@ el.formBloqueoHorario.addEventListener('submit', async (evento) => {
    ========================================================================= */
 
 function renderSobrecupoHoraSelect() {
+  const fechaISO = el.sobrecupoFecha.value;
   const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin);
-  el.sobrecupoHora.innerHTML = bloques.map((h) => `<option value="${h}">${h}</option>`).join('');
+  el.sobrecupoHora.innerHTML = bloques.map((hora) => {
+    const pasada = horaYaPaso(fechaISO, hora);
+    return `<option value="${hora}" ${pasada ? 'disabled' : ''}>${pasada ? `${hora} (pasada)` : hora}</option>`;
+  }).join('');
 }
+
+el.sobrecupoFecha.addEventListener('change', renderSobrecupoHoraSelect);
 
 async function renderSobrecupos() {
   const hoyISO = toFechaISO(new Date());
@@ -736,7 +798,7 @@ el.formSobrecupo.addEventListener('submit', async (evento) => {
 
   el.formSobrecupo.reset();
   el.sobrecupoCupos.value = 1;
-  mostrarToast('Sobrecupo guardado.');
+  mostrarToast('Sobrecupo guardado.', 'exito');
   renderSobrecupos();
 });
 
@@ -769,28 +831,91 @@ function renderServiciosList() {
       <div class="admin-table__info">
         ${servicio.nombre}
         <span class="admin-table__meta"> — ${formatearPrecio(servicio.precio)} · 60 min ${servicio.activo ? '' : '· inactivo'}</span>
+        ${servicio.descripcion ? `<span class="admin-table__descripcion">${servicio.descripcion}</span>` : ''}
       </div>
     `;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn-table-action';
-    btn.textContent = servicio.activo ? 'Desactivar' : 'Activar';
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
+
+    const acciones = document.createElement('div');
+    acciones.className = 'admin-table__actions';
+
+    const btnEditar = document.createElement('button');
+    btnEditar.type = 'button';
+    btnEditar.className = 'btn-table-action';
+    btnEditar.textContent = 'Editar';
+    btnEditar.addEventListener('click', () => abrirEditarServicio(servicio));
+
+    const btnToggle = document.createElement('button');
+    btnToggle.type = 'button';
+    btnToggle.className = 'btn-table-action';
+    btnToggle.textContent = servicio.activo ? 'Desactivar' : 'Activar';
+    btnToggle.addEventListener('click', async () => {
+      btnToggle.disabled = true;
       const { error } = await supabaseClient.from('servicios').update({ activo: !servicio.activo }).eq('id', servicio.id);
       if (error) {
         mostrarToast('No pudimos actualizar el servicio.');
-        btn.disabled = false;
+        btnToggle.disabled = false;
         return;
       }
       await cargarServicios();
       renderServiciosList();
       renderAgendarServicioSelect();
     });
-    row.appendChild(btn);
+
+    acciones.appendChild(btnEditar);
+    acciones.appendChild(btnToggle);
+    row.appendChild(acciones);
     el.listaServicios.appendChild(row);
   });
 }
+
+/* ---- Editar servicio (nombre, precio, descripción) ---- */
+
+let servicioEditandoId = null;
+
+function abrirEditarServicio(servicio) {
+  servicioEditandoId = servicio.id;
+  mostrarError(el.editarServicioError, '');
+  el.editarServicioNombre.value = servicio.nombre;
+  el.editarServicioPrecio.value = servicio.precio;
+  el.editarServicioDescripcion.value = servicio.descripcion ?? '';
+  el.editarServicioBackdrop.hidden = false;
+}
+
+function cerrarEditarServicio() {
+  servicioEditandoId = null;
+  el.editarServicioBackdrop.hidden = true;
+}
+
+el.btnCancelarEditarServicio.addEventListener('click', cerrarEditarServicio);
+
+el.formEditarServicio.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  mostrarError(el.editarServicioError, '');
+
+  const nombre = el.editarServicioNombre.value.trim();
+  const precio = parseInt(el.editarServicioPrecio.value, 10);
+  const descripcion = el.editarServicioDescripcion.value.trim();
+
+  if (!nombre) return mostrarError(el.editarServicioError, 'Ingresa un nombre.');
+  if (!precio || precio < 1) return mostrarError(el.editarServicioError, 'Ingresa un precio válido.');
+
+  const { error } = await supabaseClient
+    .from('servicios')
+    .update({ nombre, precio, descripcion: descripcion || null })
+    .eq('id', servicioEditandoId);
+
+  if (error) {
+    console.error('Error al editar servicio:', error);
+    mostrarError(el.editarServicioError, 'No pudimos guardar los cambios.');
+    return;
+  }
+
+  cerrarEditarServicio();
+  mostrarToast('Servicio actualizado.', 'exito');
+  await cargarServicios();
+  renderServiciosList();
+  renderAgendarServicioSelect();
+});
 
 el.formServicio.addEventListener('submit', async (evento) => {
   evento.preventDefault();
@@ -814,7 +939,7 @@ el.formServicio.addEventListener('submit', async (evento) => {
   }
 
   el.formServicio.reset();
-  mostrarToast('Servicio agregado.');
+  mostrarToast('Servicio agregado.', 'exito');
   await cargarServicios();
   renderServiciosList();
   renderAgendarServicioSelect();
@@ -892,7 +1017,7 @@ el.formHorario.addEventListener('submit', async (evento) => {
   state.horario.horaInicio = horaInicio;
   state.horario.horaFin = horaFin;
 
-  mostrarToast('Horario actualizado.');
+  mostrarToast('Horario actualizado.', 'exito');
   renderBloqueoHorarioHoraSelect();
   renderSobrecupoHoraSelect();
   renderAgendarHoraSelect();

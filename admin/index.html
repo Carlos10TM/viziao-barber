@@ -147,13 +147,13 @@
               <select id="agendar-codigo-pais"></select>
             </div>
             <div class="field">
-              <label for="agendar-telefono">Teléfono</label>
-              <input type="tel" id="agendar-telefono" required>
+              <label for="agendar-telefono">Teléfono <span class="field__optional">(opcional)</span></label>
+              <input type="tel" id="agendar-telefono">
             </div>
           </div>
           <div class="field">
-            <label for="agendar-email">Email</label>
-            <input type="email" id="agendar-email" required>
+            <label for="agendar-email">Email <span class="field__optional">(opcional)</span></label>
+            <input type="email" id="agendar-email">
           </div>
           <div class="field">
             <label for="agendar-observaciones">Observaciones <span class="field__optional">(opcional)</span></label>
@@ -286,6 +286,48 @@
   </div>
 
   <div class="toast" id="toast" role="status" hidden></div>
+
+  <!-- ===================================================================
+       MODAL DE CONFIRMACIÓN (reemplaza window.confirm)
+       =================================================================== -->
+  <div class="modal-backdrop" id="admin-confirm-backdrop" hidden>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title">
+      <h2 class="modal__title" id="admin-confirm-title">Confirmar</h2>
+      <p class="modal__subtitle" id="admin-confirm-mensaje"></p>
+      <div class="modal-confirm__actions">
+        <button type="button" class="btn-confirm" id="admin-confirm-aceptar">Sí, continuar</button>
+        <button type="button" class="btn-cancel" id="admin-confirm-cancelar">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL: EDITAR SERVICIO
+       =================================================================== -->
+  <div class="modal-backdrop" id="editar-servicio-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editar-servicio-title">
+      <h2 class="modal__title" id="editar-servicio-title">Editar servicio</h2>
+      <form id="form-editar-servicio" class="form-grid" novalidate>
+        <div class="field">
+          <label for="editar-servicio-nombre">Nombre</label>
+          <input type="text" id="editar-servicio-nombre" required>
+        </div>
+        <div class="field">
+          <label for="editar-servicio-precio">Precio (CLP)</label>
+          <input type="number" id="editar-servicio-precio" min="1" required>
+        </div>
+        <div class="field">
+          <label for="editar-servicio-descripcion">Descripción <span class="field__optional">(opcional)</span></label>
+          <textarea id="editar-servicio-descripcion"></textarea>
+        </div>
+        <span class="field__error" id="editar-servicio-error"></span>
+        <div class="modal-confirm__actions">
+          <button type="submit" class="btn-confirm">Guardar cambios</button>
+          <button type="button" class="btn-cancel" id="btn-cancelar-editar-servicio">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/admin/admin.js" type="module"></script>
