@@ -118,11 +118,17 @@ const el = {
   email: document.getElementById('email'),
   observaciones: document.getElementById('observaciones'),
  
-  summaryLine: document.getElementById('summary-line'),
-  summaryPrice: document.getElementById('summary-price'),
-  btnConfirm: document.getElementById('btn-confirm'),
-  btnConfirmText: document.getElementById('btn-confirm-text'),
- 
+  btnAgendar: document.getElementById('btn-agendar'),
+
+  modalConfirmBackdrop: document.getElementById('modal-confirm-backdrop'),
+  btnConfirmarCita: document.getElementById('btn-confirmar-cita'),
+  btnCancelarCita: document.getElementById('btn-cancelar-cita'),
+  confirmServicio: document.getElementById('confirm-servicio'),
+  confirmFecha: document.getElementById('confirm-fecha'),
+  confirmHora: document.getElementById('confirm-hora'),
+  confirmNombre: document.getElementById('confirm-nombre'),
+  confirmPrecio: document.getElementById('confirm-precio'),
+
   modalBackdrop: document.getElementById('modal-backdrop'),
   modalClose: document.getElementById('modal-close'),
   modalDone: document.getElementById('modal-done'),
@@ -464,21 +470,10 @@ function pasosFaltantes() {
   return faltan;
 }
  
-/** Actualiza la barra inferior (resumen + habilitar/deshabilitar botón). */
+/** Habilita/deshabilita el botón "Agendar cita" según el estado del formulario. */
 function actualizarResumen() {
-  const partes = [];
-  if (state.servicio) partes.push(state.servicio.nombre);
-  if (state.fecha) partes.push(formatearFechaLegible(state.fecha));
-  if (state.hora) partes.push(state.hora);
- 
-  el.summaryLine.textContent = partes.length
-    ? partes.join(' · ')
-    : 'Completa los pasos para reservar';
- 
-  el.summaryPrice.textContent = state.servicio ? formatearPrecio(state.servicio.precio) : '';
- 
   const listo = validarFormulario({ mostrarErrores: false });
-  el.btnConfirm.disabled = !listo || state.enviando;
+  el.btnAgendar.disabled = !listo || state.enviando;
 }
  
 function formatearFechaLegible(fechaISO) {
@@ -573,7 +568,7 @@ function construirPayload() {
  *  token de Turnstile del lado del servidor y recién ahí inserta (la tabla
  *  'citas' ya no acepta insert directo desde el navegador — ver README).
  *  Devuelve { error } con la misma forma que usaba el insert directo, para
- *  no tener que tocar la lógica de manejarEnvio(). */
+ *  no tener que tocar la lógica de confirmarYEnviar(). */
 async function insertarCita(payload) {
   const { data, error } = await supabaseClient.functions.invoke('crear-cita', {
     body: { ...payload, turnstileToken: state.turnstileToken },
@@ -594,13 +589,18 @@ async function insertarCita(payload) {
  
 function setEnviando(enviando) {
   state.enviando = enviando;
-  el.btnConfirm.disabled = enviando || !validarFormulario({ mostrarErrores: false });
-  el.btnConfirm.classList.toggle('is-loading', enviando);
+  el.btnConfirmarCita.disabled = enviando;
+  el.btnConfirmarCita.classList.toggle('is-loading', enviando);
+  el.btnCancelarCita.disabled = enviando;
 }
- 
-async function manejarEnvio(evento) {
-  evento.preventDefault();
- 
+
+/** Pisa el submit nativo del form (por si Enter dispara submit en algún
+ *  campo) — el envío real lo dispara el botón "Confirmar cita" del modal. */
+el.form.addEventListener('submit', (evento) => evento.preventDefault());
+
+/** Abre el modal de confirmación con el resumen de la cita, siempre que el
+ *  formulario esté completo. Lo dispara el botón estático "Agendar cita". */
+function abrirModalConfirmacion() {
   if (!validarFormulario({ mostrarErrores: true })) {
     const faltan = pasosFaltantes();
     mostrarToast(
@@ -610,17 +610,35 @@ async function manejarEnvio(evento) {
     );
     return;
   }
- 
+
+  const payload = construirPayload();
+  el.confirmServicio.textContent = payload.servicio_nombre;
+  el.confirmFecha.textContent = formatearFechaLegible(payload.fecha);
+  el.confirmHora.textContent = payload.hora;
+  el.confirmNombre.textContent = `${payload.nombre} ${payload.apellido}`;
+  el.confirmPrecio.textContent = formatearPrecio(payload.precio);
+
+  el.modalConfirmBackdrop.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalConfirmacion() {
+  el.modalConfirmBackdrop.hidden = true;
+  document.body.style.overflow = '';
+}
+
+/** Envía la reserva a Supabase. Lo dispara "Confirmar cita" dentro del modal. */
+async function confirmarYEnviar() {
   setEnviando(true);
   const payload = construirPayload();
- 
+
   // Solo insertamos en Supabase. El Database Webhook configurado sobre la
   // tabla 'citas' se encarga, del lado del servidor, de avisarle al barbero
   // por Telegram — el frontend ya no necesita saber que Telegram existe.
   const { error } = await insertarCita(payload);
- 
+
   setEnviando(false);
- 
+
   if (error) {
     console.error('Error al insertar la cita:', error);
     // El código 23505 es "unique_violation": alguien tomó ese bloque justo
@@ -630,6 +648,8 @@ async function manejarEnvio(evento) {
     let mensaje = 'No pudimos guardar tu cita. Intenta nuevamente.';
     if (error.code === '23505') mensaje = 'Justo se ocupó esa hora. Elige otra, por favor.';
     if (error.code === 'TURNSTILE_INVALID') mensaje = 'No pudimos verificar que eres humano. Intenta de nuevo.';
+
+    cerrarModalConfirmacion();
     mostrarToast(mensaje);
 
     if (error.code === '23505') {
@@ -643,16 +663,22 @@ async function manejarEnvio(evento) {
     actualizarResumen(); // refleja lo anterior y re-deshabilita el botón si corresponde
     return;
   }
- 
+
+  cerrarModalConfirmacion();
   mostrarModalExito(payload);
   reiniciarFormulario();
- 
+
   // Refresca el grid de horas para que el bloque recién tomado quede bloqueado
   // si el cliente decide agendar otra hora.
   await renderHoursGrid(payload.fecha);
 }
- 
-el.form.addEventListener('submit', manejarEnvio);
+
+el.btnAgendar.addEventListener('click', abrirModalConfirmacion);
+el.btnConfirmarCita.addEventListener('click', confirmarYEnviar);
+el.btnCancelarCita.addEventListener('click', cerrarModalConfirmacion);
+el.modalConfirmBackdrop.addEventListener('click', (e) => {
+  if (e.target === el.modalConfirmBackdrop) cerrarModalConfirmacion();
+});
  
  
 /* =========================================================================
@@ -674,16 +700,18 @@ function mostrarModalExito(payload) {
 function cerrarModal() {
   el.modalBackdrop.hidden = true;
   document.body.style.overflow = '';
-  el.btnConfirm.focus();
+  el.btnAgendar.focus();
 }
- 
+
 el.modalClose.addEventListener('click', cerrarModal);
 el.modalDone.addEventListener('click', cerrarModal);
 el.modalBackdrop.addEventListener('click', (e) => {
   if (e.target === el.modalBackdrop) cerrarModal();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !el.modalBackdrop.hidden) cerrarModal();
+  if (e.key !== 'Escape') return;
+  if (!el.modalConfirmBackdrop.hidden) cerrarModalConfirmacion();
+  else if (!el.modalBackdrop.hidden) cerrarModal();
 });
  
 let toastTimeout;

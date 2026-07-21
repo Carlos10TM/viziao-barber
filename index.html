@@ -130,18 +130,9 @@
         ></div>
       </div>
 
-      <!-- Espaciador para que la barra sticky no tape el último campo -->
-      <div class="bottom-spacer" aria-hidden="true"></div>
-
-      <!-- BARRA STICKY DE RESUMEN + CTA -->
-      <div class="summary-bar">
-        <div class="summary-bar__info">
-          <p class="summary-bar__line" id="summary-line">Completa los pasos para reservar</p>
-          <p class="summary-bar__price" id="summary-price"></p>
-        </div>
-        <button type="submit" class="btn-confirm" id="btn-confirm" disabled>
-          <span id="btn-confirm-text">Confirmar Cita</span>
-        </button>
+      <!-- CTA estático: abre el modal de confirmación -->
+      <div class="agendar-wrapper">
+        <button type="button" class="btn-confirm btn-agendar" id="btn-agendar" disabled>Agendar cita</button>
       </div>
 
     </form>
@@ -198,6 +189,43 @@
   <footer class="app-footer">
     <p>© <span id="footer-year"></span> Viziao Barber — Agenda Online · Hecho en Chile 🇨🇱</p>
   </footer>
+
+  <!-- MODAL DE CONFIRMACIÓN -->
+  <div class="modal-backdrop" id="modal-confirm-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-confirm-title" id="modal-confirm">
+      <h2 class="modal__title" id="modal-confirm-title">CONFIRMA TU CITA</h2>
+      <p class="modal__subtitle">Revisa los datos antes de reservar</p>
+
+      <div class="ticket-stub">
+        <div class="ticket-stub__row">
+          <span class="ticket-stub__label">Servicio</span>
+          <span class="ticket-stub__value" id="confirm-servicio">—</span>
+        </div>
+        <div class="ticket-stub__row">
+          <span class="ticket-stub__label">Fecha</span>
+          <span class="ticket-stub__value" id="confirm-fecha">—</span>
+        </div>
+        <div class="ticket-stub__row">
+          <span class="ticket-stub__label">Hora</span>
+          <span class="ticket-stub__value" id="confirm-hora">—</span>
+        </div>
+        <div class="ticket-stub__divider" aria-hidden="true"></div>
+        <div class="ticket-stub__row">
+          <span class="ticket-stub__label">A nombre de</span>
+          <span class="ticket-stub__value" id="confirm-nombre">—</span>
+        </div>
+        <div class="ticket-stub__row ticket-stub__row--total">
+          <span class="ticket-stub__label">Total</span>
+          <span class="ticket-stub__value" id="confirm-precio">—</span>
+        </div>
+      </div>
+
+      <div class="modal-confirm__actions">
+        <button type="button" class="btn-confirm" id="btn-confirmar-cita">Confirmar cita</button>
+        <button type="button" class="btn-cancel" id="btn-cancelar-cita">Cancelar cita</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL DE ÉXITO -->
   <div class="modal-backdrop" id="modal-backdrop" hidden>

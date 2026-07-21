@@ -538,7 +538,7 @@ a{ color: inherit; }
 .phone-group select{ padding: 13px 8px; }
 
 /* =========================================================
-   Barra sticky de resumen + CTA
+   CTA estático de agendamiento
    ========================================================= */
 .turnstile-wrapper{
   display: flex;
@@ -546,39 +546,12 @@ a{ color: inherit; }
   margin: 8px 0 4px;
 }
 
-.bottom-spacer{ height: 8px; }
-
-.summary-bar{
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 20px calc(14px + var(--safe-bottom));
-  background: rgba(21, 21, 24, 0.88);
-  backdrop-filter: blur(14px);
-  border-top: 1px solid var(--color-border);
-}
-.summary-bar__info{ min-width: 0; }
-.summary-bar__line{
-  font-size: 12px;
-  color: var(--color-text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.summary-bar__price{
-  font-family: var(--font-mono);
-  font-weight: 700;
-  color: var(--color-gold);
-  font-size: 15px;
-  margin-top: 2px;
+.agendar-wrapper{
+  margin: 20px 0 32px;
 }
 
 .btn-confirm{
-  flex-shrink: 0;
+  width: 100%;
   padding: 15px 22px;
   border: none;
   border-radius: var(--radius-pill);
@@ -621,7 +594,7 @@ a{ color: inherit; }
   position: relative;
   z-index: 1;
   text-align: center;
-  padding: 28px 20px 100px;
+  padding: 28px 20px 48px;
   font-size: 11px;
   color: var(--color-text-faint);
 }
@@ -746,13 +719,35 @@ a{ color: inherit; }
   box-shadow: var(--glow-gold);
 }
 
+.modal-confirm__actions{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.btn-cancel{
+  padding: 15px 22px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-dim);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.btn-cancel:hover{ background: var(--color-surface-alt); color: var(--color-text); }
+
 /* =========================================================
    Toast
    ========================================================= */
 .toast{
   position: fixed;
   left: 20px; right: 20px;
-  bottom: calc(96px + var(--safe-bottom));
+  bottom: calc(20px + var(--safe-bottom));
   z-index: 30;
   padding: 13px 16px;
   background: var(--color-surface-alt);
@@ -778,16 +773,6 @@ a{ color: inherit; }
   .form-grid{ grid-template-columns: 1fr 1fr; }
   .field--full,
   .field--phone{ grid-column: 1 / -1; }
-  .summary-bar{
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: var(--container-max);
-    bottom: 20px;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
-  }
-  .bottom-spacer{ height: 100px; }
 }
 
 @media (min-width: 1024px){
