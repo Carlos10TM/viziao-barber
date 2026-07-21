@@ -78,6 +78,13 @@ const CODIGOS_PAISES = [
   { code: '+34', flag: '🇪🇸', name: 'ES' },
   { code: '+1', flag: '🇺🇸', name: 'US' }
 ];
+
+// Datos de contacto y ubicación del local — reemplaza por los reales.
+const NEGOCIO = {
+  telefono: '+56 9 69001202',        // se muestra y arma el botón "Llamar" (tel:)
+  telefonoWhatsapp: '56969001202',    // el mismo número, formato internacional SIN "+" ni espacios
+  direccion: 'Santiago Díaz #1127, Punta Arenas, Magallanes', // se muestra y arma el mapa + "Cómo llegar"
+};
  
 /* =========================================================================
    3. ESTADO DE LA APLICACIÓN
@@ -87,6 +94,7 @@ const state = {
   servicio: null,     // objeto de SERVICIOS seleccionado
   fecha: null,         // 'YYYY-MM-DD'
   hora: null,           // 'HH:00'
+  turnstileToken: null, // token de Cloudflare Turnstile, lo llena onTurnstileSuccess
   enviando: false,
 };
  
@@ -126,6 +134,12 @@ const el = {
  
   toast: document.getElementById('toast'),
   footerYear: document.getElementById('footer-year'),
+
+  contactoDireccion: document.getElementById('contacto-direccion'),
+  contactoLlamar: document.getElementById('contacto-llamar'),
+  contactoWhatsapp: document.getElementById('contacto-whatsapp'),
+  contactoMapa: document.getElementById('contacto-mapa'),
+  contactoComoLlegar: document.getElementById('contacto-como-llegar'),
 };
  
  
@@ -434,7 +448,7 @@ function validarFormulario({ mostrarErrores } = { mostrarErrores: true }) {
     .map((validar) => validar(mostrarErrores))
     .every(Boolean);
  
-  const seleccionCompleta = Boolean(state.servicio && state.fecha && state.hora);
+  const seleccionCompleta = Boolean(state.servicio && state.fecha && state.hora && state.turnstileToken);
  
   return todoValido && seleccionCompleta;
 }
@@ -446,6 +460,7 @@ function pasosFaltantes() {
   if (!state.servicio) faltan.push('un servicio');
   if (!state.fecha) faltan.push('un día');
   if (!state.hora) faltan.push('una hora');
+  if (!state.turnstileToken) faltan.push('la verificación de seguridad');
   return faltan;
 }
  
@@ -502,6 +517,32 @@ camposConValidador.forEach(([nombreCampo, inputEl]) => {
 
 // Escuchador extra para el código de país por si lo cambian
 el.codigoPais.addEventListener('change', actualizarResumen);
+
+/* =========================================================================
+   9.1 CLOUDFLARE TURNSTILE
+   ========================================================================= */
+
+// Estas funciones las invoca el widget de Turnstile directamente por nombre
+// (ver los atributos data-callback/data-expired-callback/data-error-callback
+// en el <div class="cf-turnstile"> del HTML). Como app.js es un módulo, sus
+// funciones NO son globales por defecto — hay que colgarlas de "window" a
+// mano para que Turnstile las encuentre.
+window.onTurnstileSuccess = (token) => {
+  state.turnstileToken = token;
+  actualizarResumen();
+};
+
+window.onTurnstileExpired = () => {
+  state.turnstileToken = null;
+  actualizarResumen();
+};
+
+window.onTurnstileError = () => {
+  state.turnstileToken = null;
+  actualizarResumen();
+  mostrarToast('No pudimos verificar que eres humano. Intenta de nuevo.');
+};
+
  
  
 /* =========================================================================
@@ -528,9 +569,27 @@ function construirPayload() {
   };
 }
  
-/** Inserta la cita en la tabla 'citas' de Supabase. */
+/** Crea la cita a través de la Edge Function 'crear-cita', que verifica el
+ *  token de Turnstile del lado del servidor y recién ahí inserta (la tabla
+ *  'citas' ya no acepta insert directo desde el navegador — ver README).
+ *  Devuelve { error } con la misma forma que usaba el insert directo, para
+ *  no tener que tocar la lógica de manejarEnvio(). */
 async function insertarCita(payload) {
-  return supabaseClient.from('citas').insert([payload]);
+  const { data, error } = await supabaseClient.functions.invoke('crear-cita', {
+    body: { ...payload, turnstileToken: state.turnstileToken },
+  });
+
+  if (error) {
+    // Falla de red/infraestructura llamando a la función (no de la cita en sí).
+    return { error: { message: error.message } };
+  }
+
+  if (!data.ok) {
+    // Falla "de negocio": token inválido, hora ya ocupada (23505), etc.
+    return { error: { code: data.code, message: data.message } };
+  }
+
+  return { error: null };
 }
  
 function setEnviando(enviando) {
@@ -566,11 +625,22 @@ async function manejarEnvio(evento) {
     console.error('Error al insertar la cita:', error);
     // El código 23505 es "unique_violation": alguien tomó ese bloque justo
     // antes que tú (protección definida en el schema SQL del README).
-    const mensaje = error.code === '23505'
-      ? 'Justo se ocupó esa hora. Elige otra, por favor.'
-      : 'No pudimos guardar tu cita. Intenta nuevamente.';
+    // TURNSTILE_INVALID lo devuelve la Edge Function si el token no pasó
+    // la verificación con Cloudflare (o expiró mientras completabas el form).
+    let mensaje = 'No pudimos guardar tu cita. Intenta nuevamente.';
+    if (error.code === '23505') mensaje = 'Justo se ocupó esa hora. Elige otra, por favor.';
+    if (error.code === 'TURNSTILE_INVALID') mensaje = 'No pudimos verificar que eres humano. Intenta de nuevo.';
     mostrarToast(mensaje);
-    if (error.code === '23505') await renderHoursGrid(payload.fecha);
+
+    if (error.code === '23505') {
+      state.hora = null; // esa hora ya no está disponible, hay que elegir otra
+      await renderHoursGrid(payload.fecha);
+    }
+    if (error.code === 'TURNSTILE_INVALID') {
+      state.turnstileToken = null;
+      if (window.turnstile) window.turnstile.reset(); // pide un token nuevo
+    }
+    actualizarResumen(); // refleja lo anterior y re-deshabilita el botón si corresponde
     return;
   }
  
@@ -628,17 +698,38 @@ function reiniciarFormulario() {
   el.form.reset();
   state.fecha = null;
   state.hora = null;
+  state.turnstileToken = null; // cada reserva nueva necesita su propia verificación
   // El servicio se mantiene seleccionado (solo hay uno activo hoy).
  
   el.dayStrip.querySelectorAll('.day-chip').forEach((c) => c.setAttribute('aria-selected', 'false'));
   el.hoursGrid.innerHTML = '<p class="hours-grid__empty">Selecciona un día para ver los horarios disponibles.</p>';
+  if (window.turnstile) window.turnstile.reset();
  
   actualizarResumen();
 }
  
  
 /* =========================================================================
-   12. INICIALIZACIÓN
+   12. CONTACTO Y UBICACIÓN
+   ========================================================================= */
+
+/** Puebla la sección de contacto/ubicación (botones de llamar/WhatsApp,
+ *  mapa embebido y "Cómo llegar") a partir de la config NEGOCIO. */
+function renderContacto() {
+  el.contactoDireccion.textContent = NEGOCIO.direccion;
+
+  const telefonoLimpio = NEGOCIO.telefono.replace(/\s+/g, '');
+  el.contactoLlamar.href = `tel:${telefonoLimpio}`;
+  el.contactoWhatsapp.href = `https://wa.me/${NEGOCIO.telefonoWhatsapp}`;
+
+  const direccionCodificada = encodeURIComponent(NEGOCIO.direccion);
+  el.contactoMapa.src = `https://www.google.com/maps?q=${direccionCodificada}&output=embed`;
+  el.contactoComoLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${direccionCodificada}`;
+}
+
+
+/* =========================================================================
+   13. INICIALIZACIÓN
    ========================================================================= */
  
 function init() {
@@ -646,18 +737,7 @@ function init() {
   renderServicios();
   renderDayStrip();
   renderCodigosPais();
-
-  // Autoseleccionar el primer servicio real desde el arreglo de negocio
-  const activos = SERVICIOS.filter((s) => s.activo);
-  if (activos.length > 0) {
-    state.servicio = activos[0]; // Lo guardamos en el 'state' real inglés
-    
-    // Visualmente marcamos la primera tarjeta como presionada
-    const primeraTarjeta = el.serviciosContainer.querySelector('.service-card');
-    if (primeraTarjeta) {
-      primeraTarjeta.setAttribute('aria-pressed', 'true');
-    }
-  }
+  renderContacto();
 
   actualizarResumen();
 }

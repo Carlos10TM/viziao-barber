@@ -118,6 +118,18 @@
         </div>
       </section>
 
+      <!-- Verificación de seguridad (Cloudflare Turnstile) -->
+      <div class="turnstile-wrapper">
+        <div
+          class="cf-turnstile"
+          data-sitekey="0x4AAAAAAD6EB50Rg99B9E8U"
+          data-theme="dark"
+          data-callback="onTurnstileSuccess"
+          data-expired-callback="onTurnstileExpired"
+          data-error-callback="onTurnstileError"
+        ></div>
+      </div>
+
       <!-- Espaciador para que la barra sticky no tape el último campo -->
       <div class="bottom-spacer" aria-hidden="true"></div>
 
@@ -133,6 +145,54 @@
       </div>
 
     </form>
+
+    <!-- CONTACTO Y UBICACIÓN -->
+    <section class="contacto" aria-labelledby="contacto-title">
+      <h2 class="contacto__title" id="contacto-title">Encuéntranos</h2>
+
+      <div class="contacto-card">
+        <div class="contacto-card__info">
+          <div class="contacto-card__row">
+            <svg class="contacto-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <circle cx="12" cy="9.5" r="2.4" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+            <span id="contacto-direccion">—</span>
+          </div>
+          <div class="contacto-card__row">
+            <svg class="contacto-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 7v5l3.5 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Lunes a sábado · 10:00 – 21:00</span>
+          </div>
+        </div>
+
+        <div class="contacto-card__acciones">
+          <a class="btn-contacto btn-contacto--llamar" id="contacto-llamar" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.2c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1L6.6 10.8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            Llamar
+          </a>
+          <a class="btn-contacto btn-contacto--whatsapp" id="contacto-whatsapp" href="#" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20l1.3-4A8 8 0 1 1 8.8 19L4 20Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 10.5c0 3 2.5 5.5 5.5 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <div class="mapa-wrapper">
+        <iframe
+          id="contacto-mapa"
+          class="mapa-embed"
+          title="Ubicación de Viziao Barber en el mapa"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+        ></iframe>
+        <a class="btn-como-llegar" id="contacto-como-llegar" href="#" target="_blank" rel="noopener">
+          Cómo llegar
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </section>
   </main>
 
   <footer class="app-footer">
@@ -183,6 +243,9 @@
 
   <!-- Zona para notificaciones tipo toast -->
   <div class="toast" id="toast" role="status" aria-live="assertive" hidden></div>
+
+  <!-- Cloudflare Turnstile (verificación anti-bots) -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
   <!-- SDK oficial de Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
