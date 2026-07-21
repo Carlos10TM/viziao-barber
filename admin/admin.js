@@ -128,6 +128,7 @@ const el = {
   formServicio: document.getElementById('form-servicio'),
   servicioNombre: document.getElementById('servicio-nombre'),
   servicioPrecio: document.getElementById('servicio-precio'),
+  servicioDescripcion: document.getElementById('servicio-descripcion'),
   listaServicios: document.getElementById('lista-servicios'),
 
   editarServicioBackdrop: document.getElementById('editar-servicio-backdrop'),
@@ -345,18 +346,28 @@ el.adminNav.addEventListener('click', (evento) => {
    ========================================================================= */
 
 function renderCitaCard(cita, { cancelable }) {
+  const pasada = horaYaPaso(cita.fecha, cita.hora);
+
   const card = document.createElement('div');
-  card.className = 'cita-card';
+  card.className = 'cita-card' + (pasada ? ' cita-card--pasada' : '');
   card.innerHTML = `
     <div class="cita-card__info">
       <span class="cita-card__nombre">${cita.nombre} ${cita.apellido}</span>
       <span class="cita-card__detalle">${formatearFechaCorta(cita.fecha)} · ${cita.servicio_nombre} · ${formatearPrecio(cita.precio)}</span>
       <span class="cita-card__detalle">${cita.codigo_pais} ${cita.telefono}</span>
+      ${cita.observaciones ? `<span class="cita-card__detalle cita-card__detalle--obs">"${cita.observaciones}"</span>` : ''}
     </div>
     <span class="cita-card__hora">${cita.hora}</span>
   `;
 
-  if (cancelable) {
+  if (pasada) {
+    // Cancelar algo que ya ocurrió no tiene sentido — se reemplaza el
+    // botón por una etiqueta no interactiva.
+    const tag = document.createElement('span');
+    tag.className = 'cita-card__pasada-tag';
+    tag.textContent = 'Pasada';
+    card.appendChild(tag);
+  } else if (cancelable) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'btn-cita-cancelar';
@@ -485,7 +496,10 @@ async function renderAgendarHoraSelect() {
     const bloqueada = horasBloqueadas.has(hora);
     const pasada = horaYaPaso(fechaISO, hora);
     const deshabilitado = lleno || bloqueada || pasada;
-    const etiqueta = bloqueada ? `${hora} (bloqueada)` : lleno ? `${hora} (sin cupo)` : pasada ? `${hora} (pasada)` : hora;
+    // "pasada" no lleva etiqueta: solo queda deshabilitada (gris/tachada,
+    // como cualquier <option disabled>), sin texto extra — a diferencia de
+    // "bloqueada"/"sin cupo" que sí necesitan explicar el motivo.
+    const etiqueta = bloqueada ? `${hora} (bloqueada)` : lleno ? `${hora} (sin cupo)` : hora;
     return `<option value="${hora}" ${deshabilitado ? 'disabled' : ''}>${etiqueta}</option>`;
   }).join('');
 }
@@ -631,7 +645,7 @@ function renderBloqueoHorarioHoraSelect() {
   const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin);
   el.bloqueoHorarioHora.innerHTML = bloques.map((hora) => {
     const pasada = horaYaPaso(fechaISO, hora);
-    return `<option value="${hora}" ${pasada ? 'disabled' : ''}>${pasada ? `${hora} (pasada)` : hora}</option>`;
+    return `<option value="${hora}" ${pasada ? 'disabled' : ''}>${hora}</option>`;
   }).join('');
 }
 
@@ -720,7 +734,7 @@ function renderSobrecupoHoraSelect() {
   const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin);
   el.sobrecupoHora.innerHTML = bloques.map((hora) => {
     const pasada = horaYaPaso(fechaISO, hora);
-    return `<option value="${hora}" ${pasada ? 'disabled' : ''}>${pasada ? `${hora} (pasada)` : hora}</option>`;
+    return `<option value="${hora}" ${pasada ? 'disabled' : ''}>${hora}</option>`;
   }).join('');
 }
 
@@ -921,6 +935,7 @@ el.formServicio.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   const nombre = el.servicioNombre.value.trim();
   const precio = parseInt(el.servicioPrecio.value, 10);
+  const descripcion = el.servicioDescripcion.value.trim();
   if (!nombre || !precio || precio < 1) return;
 
   // duracion_min queda en el default de la tabla (60) — es fijo para todos
@@ -928,6 +943,7 @@ el.formServicio.addEventListener('submit', async (evento) => {
   const { error } = await supabaseClient.from('servicios').insert({
     nombre,
     precio,
+    descripcion: descripcion || null,
     activo: true,
     orden: state.servicios.length,
   });

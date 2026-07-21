@@ -188,6 +188,10 @@ body{ padding-bottom: 40px; }
   gap: 12px;
 }
 
+/* Citas de hoy cuya hora ya pasó — mismo tratamiento (atenuar) que ya se
+   usa para servicios inactivos, para diferenciarlas sin ocultarlas. */
+.cita-card--pasada{ opacity: 0.6; }
+
 .cita-card__info{ display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 .cita-card__nombre{
@@ -203,6 +207,7 @@ body{ padding-bottom: 40px; }
   font-size: 12px;
   color: var(--color-text-dim);
 }
+.cita-card__detalle--obs{ font-style: italic; }
 
 .cita-card__hora{
   font-family: var(--font-mono);
@@ -210,6 +215,19 @@ body{ padding-bottom: 40px; }
   color: var(--color-purple);
   font-size: 13px;
   flex-shrink: 0;
+}
+
+/* Reemplaza al botón "Cancelar" cuando la cita ya pasó — cancelar algo que
+   ya ocurrió no tiene sentido, así que ni siquiera es un botón. */
+.cita-card__pasada-tag{
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-text-faint);
+  padding: 8px 12px;
 }
 
 .btn-cita-cancelar{
@@ -239,9 +257,15 @@ body{ padding-bottom: 40px; }
    de 2 columnas interna), así que en escritorio terminaban reordenados y
    descuadrados. Los mantenemos en una sola columna siempre. */
 .login-card .form-grid,
-.admin-panel .form-grid{
+.admin-panel .form-grid,
+.modal .form-grid{
   grid-template-columns: 1fr;
 }
+
+/* #form-servicio pasó de .form-row--inline (que traía separación propia)
+   a .form-grid al agregarle el campo de descripción — sin esto quedaba
+   pegado a la lista de servicios de abajo. */
+#form-servicio{ margin-bottom: 20px; }
 
 .form-row{
   display: grid;

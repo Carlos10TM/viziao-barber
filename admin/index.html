@@ -240,8 +240,8 @@
         <h1 class="admin-panel__title">Servicios</h1>
         <p class="admin-panel__subtitle">La duración está fija en 60 minutos para todos los servicios — es una regla del sistema, no editable aquí.</p>
 
-        <form id="form-servicio" class="form-row form-row--inline" novalidate>
-          <div class="field field--grow">
+        <form id="form-servicio" class="form-grid" novalidate>
+          <div class="field">
             <label for="servicio-nombre">Nombre</label>
             <input type="text" id="servicio-nombre" required>
           </div>
@@ -249,7 +249,11 @@
             <label for="servicio-precio">Precio (CLP)</label>
             <input type="number" id="servicio-precio" min="1" required>
           </div>
-          <button type="submit" class="btn-add">Agregar</button>
+          <div class="field">
+            <label for="servicio-descripcion">Descripción <span class="field__optional">(opcional)</span></label>
+            <textarea id="servicio-descripcion"></textarea>
+          </div>
+          <button type="submit" class="btn-confirm">Agregar servicio</button>
         </form>
 
         <div class="admin-table" id="lista-servicios">
