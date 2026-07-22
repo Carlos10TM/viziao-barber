@@ -71,11 +71,13 @@ const CODIGOS_PAISES = [
   { code: '+1', flag: '🇺🇸', name: 'US' }
 ];
 
-// Datos de contacto y ubicación del local — reemplaza por los reales.
+// Datos de contacto y ubicación del local — ahora los administra el barbero
+// desde /admin (tabla 'negocio'); esto queda solo como valor por defecto
+// mientras cargarNegocio() termina (ver sección 12, INICIALIZACIÓN).
 const NEGOCIO = {
-  telefono: '+56 9 69001202',        // se muestra y arma el botón "Llamar" (tel:)
-  telefonoWhatsapp: '56969001202',    // el mismo número, formato internacional SIN "+" ni espacios
-  direccion: 'Santiago Díaz #1127, Punta Arenas, Magallanes', // se muestra y arma el mapa + "Cómo llegar"
+  telefono: '',        // se muestra y arma el botón "Llamar" (tel:)
+  telefonoWhatsapp: '', // el mismo número, formato internacional SIN "+" ni espacios
+  direccion: '',        // se muestra y arma el mapa + "Cómo llegar"
 };
  
 /* =========================================================================
@@ -98,6 +100,7 @@ const state = {
 const el = {
   form: document.getElementById('booking-form'),
   serviciosContainer: document.getElementById('servicios-container'),
+  servicioDetalle: document.getElementById('servicio-detalle'),
   dayStrip: document.getElementById('day-strip'),
   dayNavPrev: document.getElementById('day-nav-prev'),
   dayNavNext: document.getElementById('day-nav-next'),
@@ -134,6 +137,7 @@ const el = {
   footerYear: document.getElementById('footer-year'),
 
   contactoDireccion: document.getElementById('contacto-direccion'),
+  contactoTelefono: document.getElementById('contacto-telefono'),
   contactoLlamar: document.getElementById('contacto-llamar'),
   contactoWhatsapp: document.getElementById('contacto-whatsapp'),
   contactoMapa: document.getElementById('contacto-mapa'),
@@ -223,16 +227,16 @@ function renderServicios() {
   activos.forEach((servicio) => {
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'service-card';
+    card.className = 'service-card' + (activos.length === 1 ? ' service-card--full' : '');
     card.setAttribute('aria-pressed', 'false');
     card.innerHTML = `
-      <div class="service-card__info">
-        <span class="service-card__name">${servicio.nombre}</span>
-        ${servicio.descripcion ? `<span class="service-card__desc">${servicio.descripcion}</span>` : ''}
-        <span class="service-card__duration">${servicio.duracionMin} min</span>
-      </div>
-      <span class="service-card__price">${formatearPrecio(servicio.precio)}</span>
       <span class="service-card__radio" aria-hidden="true"></span>
+      <span class="service-card__name">${servicio.nombre}</span>
+      ${servicio.descripcion ? `<span class="service-card__desc">${servicio.descripcion}</span>` : ''}
+      <span class="service-card__footer">
+        <span class="service-card__duration">${servicio.duracionMin} min</span>
+        <span class="service-card__price">${formatearPrecio(servicio.precio)}</span>
+      </span>
     `;
     card.addEventListener('click', () => seleccionarServicio(servicio, card));
     el.serviciosContainer.appendChild(card);
@@ -248,12 +252,22 @@ function renderServicios() {
  
 function seleccionarServicio(servicio, cardEl) {
   state.servicio = servicio;
- 
+
   el.serviciosContainer.querySelectorAll('.service-card').forEach((c) => {
     c.setAttribute('aria-pressed', 'false');
   });
   cardEl.setAttribute('aria-pressed', 'true');
- 
+
+  // La tarjeta recorta la descripción a 2 líneas para que la grilla se vea
+  // pareja — acá se muestra completa una vez que el cliente ya eligió el
+  // servicio, para que no se quede sin ver el resto del texto.
+  if (servicio.descripcion) {
+    el.servicioDetalle.textContent = servicio.descripcion;
+    el.servicioDetalle.hidden = false;
+  } else {
+    el.servicioDetalle.hidden = true;
+  }
+
   actualizarResumen();
 }
  
@@ -865,10 +879,30 @@ function reiniciarFormulario() {
    12. CONTACTO Y UBICACIÓN
    ========================================================================= */
 
+/** Trae la dirección y el teléfono del negocio configurados por el barbero
+ *  en /admin y los aplica sobre NEGOCIO. Si falla, se quedan los valores
+ *  por defecto (vacíos) de arriba. */
+async function cargarNegocio() {
+  const { data, error } = await supabaseClient
+    .from('negocio')
+    .select('calle, numero, comuna, codigo_pais, telefono')
+    .single();
+
+  if (error) {
+    console.error('Error al cargar los datos del negocio:', error);
+    return;
+  }
+
+  NEGOCIO.direccion = `${data.calle} #${data.numero}, ${data.comuna}`;
+  NEGOCIO.telefono = `${data.codigo_pais} ${data.telefono}`;
+  NEGOCIO.telefonoWhatsapp = `${data.codigo_pais.replace('+', '')}${data.telefono}`;
+}
+
 /** Puebla la sección de contacto/ubicación (botones de llamar/WhatsApp,
  *  mapa embebido y "Cómo llegar") a partir de la config NEGOCIO. */
 function renderContacto() {
   el.contactoDireccion.textContent = NEGOCIO.direccion;
+  el.contactoTelefono.textContent = NEGOCIO.telefono;
 
   const telefonoLimpio = NEGOCIO.telefono.replace(/\s+/g, '');
   el.contactoLlamar.href = `tel:${telefonoLimpio}`;
@@ -887,15 +921,15 @@ function renderContacto() {
 async function init() {
   el.footerYear.textContent = new Date().getFullYear();
   renderCodigosPais();
-  renderContacto();
 
   // Datos que administra el barbero desde /admin — se cargan antes de
-  // renderizar servicios y días porque esas vistas dependen de ellos.
-  await Promise.all([cargarServicios(), cargarHorarioNegocio(), cargarDiasBloqueados()]);
+  // renderizar servicios, días y contacto porque esas vistas dependen de ellos.
+  await Promise.all([cargarServicios(), cargarHorarioNegocio(), cargarDiasBloqueados(), cargarNegocio()]);
 
   renderServicios();
   renderDayStrip();
   renderHorarioTexto();
+  renderContacto();
 
   actualizarResumen();
 }

@@ -72,6 +72,7 @@
       <button type="button" class="admin-nav__item" data-panel="bloqueos-horarios">Bloquear horas</button>
       <button type="button" class="admin-nav__item" data-panel="servicios">Servicios</button>
       <button type="button" class="admin-nav__item" data-panel="horario">Horario</button>
+      <button type="button" class="admin-nav__item" data-panel="negocio">Ubicación y contacto</button>
     </nav>
 
     <main class="admin-main">
@@ -247,12 +248,14 @@
           </div>
           <div class="field">
             <label for="servicio-precio">Precio (CLP)</label>
-            <input type="number" id="servicio-precio" min="1" required>
+            <input type="text" inputmode="numeric" id="servicio-precio" required>
           </div>
           <div class="field">
             <label for="servicio-descripcion">Descripción <span class="field__optional">(opcional)</span></label>
-            <textarea id="servicio-descripcion"></textarea>
+            <textarea id="servicio-descripcion" maxlength="150"></textarea>
+            <span class="field__contador" id="servicio-descripcion-contador">0/150</span>
           </div>
+          <span class="field__error" id="servicio-error"></span>
           <button type="submit" class="btn-confirm">Agregar servicio</button>
         </form>
 
@@ -283,6 +286,41 @@
           </div>
           <span class="field__error" id="horario-error"></span>
           <button type="submit" class="btn-confirm">Guardar horario</button>
+        </form>
+      </section>
+
+      <!-- ---------------- UBICACIÓN Y CONTACTO ---------------- -->
+      <section class="admin-panel" id="panel-negocio" data-panel="negocio" hidden>
+        <h1 class="admin-panel__title">Ubicación y contacto</h1>
+        <p class="admin-panel__subtitle">Se muestran en el sitio público (mapa, "Cómo llegar", llamar y WhatsApp). Escribe la dirección completa para que el mapa la ubique bien.</p>
+
+        <form id="form-negocio" class="form-grid" novalidate>
+          <div class="form-row">
+            <div class="field">
+              <label for="negocio-calle">Calle</label>
+              <input type="text" id="negocio-calle" required>
+            </div>
+            <div class="field">
+              <label for="negocio-numero">Número</label>
+              <input type="text" id="negocio-numero" required>
+            </div>
+          </div>
+          <div class="field">
+            <label for="negocio-comuna">Comuna</label>
+            <input type="text" id="negocio-comuna" required>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="negocio-codigo-pais">País</label>
+              <select id="negocio-codigo-pais"></select>
+            </div>
+            <div class="field">
+              <label for="negocio-telefono">Teléfono</label>
+              <input type="tel" id="negocio-telefono" required>
+            </div>
+          </div>
+          <span class="field__error" id="negocio-error"></span>
+          <button type="submit" class="btn-confirm">Guardar</button>
         </form>
       </section>
 
@@ -318,11 +356,12 @@
         </div>
         <div class="field">
           <label for="editar-servicio-precio">Precio (CLP)</label>
-          <input type="number" id="editar-servicio-precio" min="1" required>
+          <input type="text" inputmode="numeric" id="editar-servicio-precio" required>
         </div>
         <div class="field">
           <label for="editar-servicio-descripcion">Descripción <span class="field__optional">(opcional)</span></label>
-          <textarea id="editar-servicio-descripcion"></textarea>
+          <textarea id="editar-servicio-descripcion" maxlength="150"></textarea>
+          <span class="field__contador" id="editar-servicio-descripcion-contador">0/150</span>
         </div>
         <span class="field__error" id="editar-servicio-error"></span>
         <div class="modal-confirm__actions">

@@ -245,79 +245,48 @@ a{ color: inherit; }
 }
 
 /* =========================================================
-   Servicio — tarjeta estilo "ticket"
+   Servicio — grid de tarjetas compactas
    ========================================================= */
 .servicios-container{
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  /* minmax(0, 1fr): sin el mínimo en 0, una descripción sin espacios podía
+     empujar esa columna más ancha que la otra (mismo caso que .stats-row
+     en el admin). */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   margin-top: 16px;
 }
+/* Con un solo servicio activo la tarjeta ocupa las 2 columnas — si no,
+   queda apretada a la mitad del ancho como si sobrara espacio para otra. */
+.service-card--full{ grid-column: 1 / -1; }
 .service-card{
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 14px;
+  min-width: 0;
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-lg);
   cursor: pointer;
   text-align: left;
-  width: 100%;
   color: var(--color-text);
   transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition-fast);
-  overflow: visible;
 }
-.service-card::before,
-.service-card::after{
-  content: '';
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: var(--color-bg);
-  border: 1.5px solid var(--color-border);
-  transition: border-color var(--transition);
-}
-.service-card::before{ left: -9px; }
-.service-card::after{ right: -9px; }
+.service-card:active{ transform: scale(0.97); }
 
 .service-card[aria-pressed="true"]{
   border-color: var(--color-purple);
   box-shadow: var(--glow-purple-soft);
 }
-.service-card[aria-pressed="true"]::before,
-.service-card[aria-pressed="true"]::after{ border-color: var(--color-purple); }
 
-.service-card__info{ display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
-.service-card__name{ font-weight: 700; font-size: 16px; }
-.service-card__desc{
-  font-size: 13px;
-  line-height: 1.35;
-  color: var(--color-text-dim);
-}
-.service-card__duration{
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-text-faint);
-  letter-spacing: 0.04em;
-}
-.service-card__price{
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--color-gold);
-  white-space: nowrap;
-}
 .service-card__radio{
-  width: 20px; height: 20px;
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 18px; height: 18px;
   border-radius: 50%;
   border: 2px solid var(--color-border);
-  flex-shrink: 0;
-  position: relative;
   transition: border-color var(--transition);
 }
 .service-card[aria-pressed="true"] .service-card__radio{ border-color: var(--color-purple); }
@@ -329,6 +298,64 @@ a{ color: inherit; }
   background: var(--color-purple);
   box-shadow: 0 0 8px var(--color-purple);
 }
+
+.service-card__name{
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.25;
+  padding-right: 24px; /* deja espacio al radio */
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.service-card__desc{
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-text-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  /* Hijo de un flex container (.service-card): sin esto, un texto sin
+     espacios (una sola "palabra" larga) fuerza su ancho de contenido y
+     empuja toda la tarjeta más ancha, sin importar overflow-wrap. */
+  min-width: 0;
+}
+.service-card__footer{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+.service-card__duration{
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-faint);
+  letter-spacing: 0.03em;
+}
+.service-card__price{
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-gold);
+  white-space: nowrap;
+}
+
+/* Descripción completa del servicio elegido — la tarjeta solo muestra un
+   extracto de 2 líneas, esto reemplaza el "..." una vez que se selecciona. */
+.servicio-detalle{
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--color-surface);
+  border-left: 2px solid var(--color-purple-dim);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text-dim);
+}
+.servicio-detalle[hidden]{ display: none; }
 
 /* =========================================================
    Selector de día — tira horizontal

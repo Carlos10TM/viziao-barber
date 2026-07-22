@@ -129,6 +129,8 @@ const el = {
   servicioNombre: document.getElementById('servicio-nombre'),
   servicioPrecio: document.getElementById('servicio-precio'),
   servicioDescripcion: document.getElementById('servicio-descripcion'),
+  servicioDescripcionContador: document.getElementById('servicio-descripcion-contador'),
+  servicioError: document.getElementById('servicio-error'),
   listaServicios: document.getElementById('lista-servicios'),
 
   editarServicioBackdrop: document.getElementById('editar-servicio-backdrop'),
@@ -136,6 +138,7 @@ const el = {
   editarServicioNombre: document.getElementById('editar-servicio-nombre'),
   editarServicioPrecio: document.getElementById('editar-servicio-precio'),
   editarServicioDescripcion: document.getElementById('editar-servicio-descripcion'),
+  editarServicioDescripcionContador: document.getElementById('editar-servicio-descripcion-contador'),
   editarServicioError: document.getElementById('editar-servicio-error'),
   btnCancelarEditarServicio: document.getElementById('btn-cancelar-editar-servicio'),
 
@@ -145,6 +148,14 @@ const el = {
   horarioFin: document.getElementById('horario-fin'),
   horarioError: document.getElementById('horario-error'),
 
+  formNegocio: document.getElementById('form-negocio'),
+  negocioCalle: document.getElementById('negocio-calle'),
+  negocioNumero: document.getElementById('negocio-numero'),
+  negocioComuna: document.getElementById('negocio-comuna'),
+  negocioCodigoPais: document.getElementById('negocio-codigo-pais'),
+  negocioTelefono: document.getElementById('negocio-telefono'),
+  negocioError: document.getElementById('negocio-error'),
+
   toast: document.getElementById('toast'),
 
   confirmBackdrop: document.getElementById('admin-confirm-backdrop'),
@@ -152,6 +163,12 @@ const el = {
   btnConfirmAceptar: document.getElementById('admin-confirm-aceptar'),
   btnConfirmCancelar: document.getElementById('admin-confirm-cancelar'),
 };
+
+conectarFormatoMiles(el.servicioPrecio);
+conectarFormatoMiles(el.editarServicioPrecio);
+
+const actualizarContadorServicio = conectarContador(el.servicioDescripcion, el.servicioDescripcionContador);
+const actualizarContadorEditarServicio = conectarContador(el.editarServicioDescripcion, el.editarServicioDescripcionContador);
 
 
 /* =========================================================================
@@ -190,6 +207,45 @@ function generarBloquesHora(horaInicio, horaFin) {
 
 function telefonoValido(valor) {
   return /^[0-9]{7,12}$/.test(valor.trim());
+}
+
+/** Formatea dígitos con separador de miles chileno: "18000" -> "18.000". */
+function formatearMilesInput(valor) {
+  const digitos = valor.replace(/\D/g, '');
+  return digitos ? Number(digitos).toLocaleString('es-CL') : '';
+}
+
+/** Extrae el número real de un input con separador de miles ("18.000" -> 18000). */
+function leerNumeroFormateado(valor) {
+  const digitos = valor.replace(/\D/g, '');
+  return digitos ? parseInt(digitos, 10) : NaN;
+}
+
+/** Reformatea un input de precio a medida que se escribe, conservando la
+ *  posición del cursor (contando dígitos, no caracteres, porque los puntos
+ *  de miles se recalculan en cada tecla). */
+function conectarFormatoMiles(input) {
+  input.addEventListener('input', () => {
+    const digitosAntesDelCursor = input.value.slice(0, input.selectionStart).replace(/\D/g, '').length;
+    input.value = formatearMilesInput(input.value);
+    let pos = 0;
+    let digitosVistos = 0;
+    while (pos < input.value.length && digitosVistos < digitosAntesDelCursor) {
+      if (/\d/.test(input.value[pos])) digitosVistos++;
+      pos++;
+    }
+    input.setSelectionRange(pos, pos);
+  });
+}
+
+/** Conecta un contador "X/max" a un textarea (se actualiza al escribir y
+ *  se puede refrescar a mano con actualizarContador() al precargar un
+ *  valor por código, ya que eso no dispara el evento 'input'). */
+function conectarContador(textarea, contadorEl) {
+  const max = textarea.maxLength;
+  const actualizar = () => { contadorEl.textContent = `${textarea.value.length}/${max}`; };
+  textarea.addEventListener('input', actualizar);
+  return actualizar;
 }
 
 /** Un bloque de hora ya pasó si la fecha es hoy y su hora de inicio ya
@@ -900,8 +956,31 @@ function renderServiciosList() {
       renderAgendarServicioSelect();
     });
 
+    const btnEliminar = document.createElement('button');
+    btnEliminar.type = 'button';
+    btnEliminar.className = 'btn-table-action btn-table-action--danger';
+    btnEliminar.textContent = 'Eliminar';
+    btnEliminar.addEventListener('click', async () => {
+      const confirmado = await confirmar(`¿Eliminar "${servicio.nombre}"? Esta acción no se puede deshacer.`);
+      if (!confirmado) return;
+
+      btnEliminar.disabled = true;
+      const { error } = await supabaseClient.from('servicios').delete().eq('id', servicio.id);
+      if (error) {
+        console.error('Error al eliminar servicio:', error);
+        mostrarToast('No pudimos eliminar el servicio.');
+        btnEliminar.disabled = false;
+        return;
+      }
+      mostrarToast('Servicio eliminado.', 'exito');
+      await cargarServicios();
+      renderServiciosList();
+      renderAgendarServicioSelect();
+    });
+
     acciones.appendChild(btnEditar);
     acciones.appendChild(btnToggle);
+    acciones.appendChild(btnEliminar);
     row.appendChild(acciones);
     el.listaServicios.appendChild(row);
   });
@@ -915,8 +994,9 @@ function abrirEditarServicio(servicio) {
   servicioEditandoId = servicio.id;
   mostrarError(el.editarServicioError, '');
   el.editarServicioNombre.value = servicio.nombre;
-  el.editarServicioPrecio.value = servicio.precio;
+  el.editarServicioPrecio.value = servicio.precio.toLocaleString('es-CL');
   el.editarServicioDescripcion.value = servicio.descripcion ?? '';
+  actualizarContadorEditarServicio();
   el.editarServicioBackdrop.hidden = false;
 }
 
@@ -932,7 +1012,7 @@ el.formEditarServicio.addEventListener('submit', async (evento) => {
   mostrarError(el.editarServicioError, '');
 
   const nombre = el.editarServicioNombre.value.trim();
-  const precio = parseInt(el.editarServicioPrecio.value, 10);
+  const precio = leerNumeroFormateado(el.editarServicioPrecio.value);
   const descripcion = el.editarServicioDescripcion.value.trim();
 
   if (!nombre) return mostrarError(el.editarServicioError, 'Ingresa un nombre.');
@@ -958,10 +1038,14 @@ el.formEditarServicio.addEventListener('submit', async (evento) => {
 
 el.formServicio.addEventListener('submit', async (evento) => {
   evento.preventDefault();
+  mostrarError(el.servicioError, '');
+
   const nombre = el.servicioNombre.value.trim();
-  const precio = parseInt(el.servicioPrecio.value, 10);
+  const precio = leerNumeroFormateado(el.servicioPrecio.value);
   const descripcion = el.servicioDescripcion.value.trim();
-  if (!nombre || !precio || precio < 1) return;
+
+  if (!nombre) return mostrarError(el.servicioError, 'Ingresa un nombre.');
+  if (!precio || precio < 1) return mostrarError(el.servicioError, 'Ingresa un precio válido.');
 
   // duracion_min queda en el default de la tabla (60) — es fijo para todos
   // los servicios porque generarBloquesHora() asume citas de 1 hora.
@@ -975,11 +1059,12 @@ el.formServicio.addEventListener('submit', async (evento) => {
 
   if (error) {
     console.error('Error al crear servicio:', error);
-    mostrarToast('No pudimos crear el servicio.');
+    mostrarError(el.servicioError, 'No pudimos crear el servicio.');
     return;
   }
 
   el.formServicio.reset();
+  actualizarContadorServicio();
   mostrarToast('Servicio agregado.', 'exito');
   await cargarServicios();
   renderServiciosList();
@@ -1066,7 +1151,74 @@ el.formHorario.addEventListener('submit', async (evento) => {
 
 
 /* =========================================================================
-   15. CARGA INICIAL DE DATOS
+   15. UBICACIÓN Y CONTACTO
+   ========================================================================= */
+
+function renderNegocioCodigoPais() {
+  el.negocioCodigoPais.innerHTML = CODIGOS_PAISES
+    .map((c) => `<option value="${c.code}">${c.flag} ${c.code}</option>`)
+    .join('');
+}
+
+async function cargarNegocio() {
+  const { data, error } = await supabaseClient
+    .from('negocio')
+    .select('calle, numero, comuna, codigo_pais, telefono')
+    .single();
+
+  if (error) {
+    console.error('Error al cargar los datos del negocio:', error);
+    return;
+  }
+
+  el.negocioCalle.value = data.calle;
+  el.negocioNumero.value = data.numero;
+  el.negocioComuna.value = data.comuna;
+  el.negocioCodigoPais.value = data.codigo_pais;
+  el.negocioTelefono.value = data.telefono;
+}
+
+el.formNegocio.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  mostrarError(el.negocioError, '');
+
+  const calle = el.negocioCalle.value.trim();
+  const numero = el.negocioNumero.value.trim();
+  const comuna = el.negocioComuna.value.trim();
+  const telefono = el.negocioTelefono.value.trim();
+
+  if (!calle) return mostrarError(el.negocioError, 'Ingresa la calle.');
+  if (!numero) return mostrarError(el.negocioError, 'Ingresa el número.');
+  if (!comuna) return mostrarError(el.negocioError, 'Ingresa la comuna.');
+  if (!telefonoValido(telefono)) return mostrarError(el.negocioError, 'Ingresa un teléfono válido.');
+
+  const confirmado = await confirmar('¿Guardar los cambios en la ubicación y el contacto? Se actualizan de inmediato en el sitio público.');
+  if (!confirmado) return;
+
+  const { error } = await supabaseClient
+    .from('negocio')
+    .update({
+      calle,
+      numero,
+      comuna,
+      codigo_pais: el.negocioCodigoPais.value,
+      telefono,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', true);
+
+  if (error) {
+    console.error('Error al guardar los datos del negocio:', error);
+    mostrarError(el.negocioError, 'No pudimos guardar los cambios.');
+    return;
+  }
+
+  mostrarToast('Ubicación y contacto actualizados.', 'exito');
+});
+
+
+/* =========================================================================
+   16. CARGA INICIAL DE DATOS
    ========================================================================= */
 
 async function cargarTodo() {
@@ -1077,10 +1229,15 @@ async function cargarTodo() {
   el.bloqueoHorarioFecha.min = hoyISO;
   el.sobrecupoFecha.min = hoyISO;
 
-  await Promise.all([cargarServicios(), cargarHorario()]);
+  // Los <select> de país se pueblan antes de cargar los datos, porque
+  // cargarNegocio() necesita las <option> ya puestas para poder fijar el
+  // valor seleccionado.
+  renderAgendarCodigoPais();
+  renderNegocioCodigoPais();
+
+  await Promise.all([cargarServicios(), cargarHorario(), cargarNegocio()]);
 
   renderAgendarServicioSelect();
-  renderAgendarCodigoPais();
   renderBloqueoHorarioHoraSelect();
   renderSobrecupoHoraSelect();
   renderDiasSemana();
