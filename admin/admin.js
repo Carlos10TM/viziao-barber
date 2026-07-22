@@ -424,7 +424,7 @@ async function renderResumen() {
 
   el.resumenLista.innerHTML = '';
   if (data.length === 0) {
-    el.resumenLista.innerHTML = '<p class="admin-empty">No tienes citas agendadas hoy.</p>';
+    el.resumenLista.innerHTML = '<p class="admin-empty">No tienes citas agendadas para hoy.</p>';
     return;
   }
   data.forEach((cita) => el.resumenLista.appendChild(renderCitaCard(cita, { cancelable: true })));
@@ -480,10 +480,22 @@ function renderAgendarCodigoPais() {
 
 async function renderAgendarHoraSelect() {
   const fechaISO = el.agendarFecha.value;
-  const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin);
+  // Las horas que ya pasaron se sacan de la lista directamente en vez de
+  // dejarlas como <option disabled>: en el picker nativo de varios
+  // navegadores mobile una opción deshabilitada casi no se distingue de una
+  // habilitada, y además el navegador puede dejarla seleccionada por
+  // defecto (permitiendo agendar en una hora que ya pasó). Sacándola de la
+  // lista se evitan ambos problemas en cualquier dispositivo.
+  const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin)
+    .filter((hora) => !horaYaPaso(fechaISO, hora));
 
   if (!fechaISO) {
     el.agendarHora.innerHTML = bloques.map((h) => `<option value="${h}">${h}</option>`).join('');
+    return;
+  }
+
+  if (bloques.length === 0) {
+    el.agendarHora.innerHTML = '<option value="" disabled selected>No hay horas disponibles</option>';
     return;
   }
 
@@ -494,11 +506,7 @@ async function renderAgendarHoraSelect() {
     const ocupadas = ocupadasPorHora.get(hora) ?? 0;
     const lleno = ocupadas >= cupos;
     const bloqueada = horasBloqueadas.has(hora);
-    const pasada = horaYaPaso(fechaISO, hora);
-    const deshabilitado = lleno || bloqueada || pasada;
-    // "pasada" no lleva etiqueta: solo queda deshabilitada (gris/tachada,
-    // como cualquier <option disabled>), sin texto extra — a diferencia de
-    // "bloqueada"/"sin cupo" que sí necesitan explicar el motivo.
+    const deshabilitado = lleno || bloqueada;
     const etiqueta = bloqueada ? `${hora} (bloqueada)` : lleno ? `${hora} (sin cupo)` : hora;
     return `<option value="${hora}" ${deshabilitado ? 'disabled' : ''}>${etiqueta}</option>`;
   }).join('');
@@ -516,7 +524,12 @@ el.formAgendar.addEventListener('submit', async (evento) => {
 
   if (!servicio) return mostrarError(el.agendarError, 'Elige un servicio.');
   if (!el.agendarFecha.value) return mostrarError(el.agendarError, 'Elige una fecha.');
+  if (el.agendarFecha.value < toFechaISO(new Date())) return mostrarError(el.agendarError, 'No puedes agendar en una fecha pasada.');
   if (!el.agendarHora.value) return mostrarError(el.agendarError, 'Elige una hora.');
+  // El <select> de hora ya excluye las pasadas, pero esto es una segunda
+  // barrera por si quedó una opción vieja seleccionada (ej. la pestaña
+  // estuvo abierta y pasó la hora sin recargar el selector).
+  if (horaYaPaso(el.agendarFecha.value, el.agendarHora.value)) return mostrarError(el.agendarError, 'Esa hora ya pasó, elige otra.');
   if (!el.agendarNombre.value.trim() || !el.agendarApellido.value.trim()) {
     return mostrarError(el.agendarError, 'Completa nombre y apellido.');
   }
@@ -619,6 +632,10 @@ async function renderBloqueosDias() {
 el.formBloqueoDia.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   if (!el.bloqueoDiaFecha.value) return;
+  if (el.bloqueoDiaFecha.value < toFechaISO(new Date())) {
+    mostrarToast('No puedes bloquear una fecha pasada.');
+    return;
+  }
 
   const { error } = await supabaseClient.from('bloqueos_dias').insert({
     fecha: el.bloqueoDiaFecha.value,
@@ -642,11 +659,11 @@ el.formBloqueoDia.addEventListener('submit', async (evento) => {
 
 function renderBloqueoHorarioHoraSelect() {
   const fechaISO = el.bloqueoHorarioFecha.value;
-  const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin);
-  el.bloqueoHorarioHora.innerHTML = bloques.map((hora) => {
-    const pasada = horaYaPaso(fechaISO, hora);
-    return `<option value="${hora}" ${pasada ? 'disabled' : ''}>${hora}</option>`;
-  }).join('');
+  const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin)
+    .filter((hora) => !horaYaPaso(fechaISO, hora));
+  el.bloqueoHorarioHora.innerHTML = bloques.length
+    ? bloques.map((hora) => `<option value="${hora}">${hora}</option>`).join('')
+    : '<option value="" disabled selected>No hay horas disponibles</option>';
 }
 
 el.bloqueoHorarioFecha.addEventListener('change', renderBloqueoHorarioHoraSelect);
@@ -707,6 +724,10 @@ async function renderBloqueosHorarios() {
 el.formBloqueoHorario.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   if (!el.bloqueoHorarioFecha.value || !el.bloqueoHorarioHora.value) return;
+  if (el.bloqueoHorarioFecha.value < toFechaISO(new Date()) || horaYaPaso(el.bloqueoHorarioFecha.value, el.bloqueoHorarioHora.value)) {
+    mostrarToast('No puedes bloquear una hora pasada.');
+    return;
+  }
 
   const { error } = await supabaseClient.from('bloqueos_horarios').insert({
     fecha: el.bloqueoHorarioFecha.value,
@@ -731,11 +752,11 @@ el.formBloqueoHorario.addEventListener('submit', async (evento) => {
 
 function renderSobrecupoHoraSelect() {
   const fechaISO = el.sobrecupoFecha.value;
-  const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin);
-  el.sobrecupoHora.innerHTML = bloques.map((hora) => {
-    const pasada = horaYaPaso(fechaISO, hora);
-    return `<option value="${hora}" ${pasada ? 'disabled' : ''}>${hora}</option>`;
-  }).join('');
+  const bloques = generarBloquesHora(state.horario.horaInicio, state.horario.horaFin)
+    .filter((hora) => !horaYaPaso(fechaISO, hora));
+  el.sobrecupoHora.innerHTML = bloques.length
+    ? bloques.map((hora) => `<option value="${hora}">${hora}</option>`).join('')
+    : '<option value="" disabled selected>No hay horas disponibles</option>';
 }
 
 el.sobrecupoFecha.addEventListener('change', renderSobrecupoHoraSelect);
@@ -797,6 +818,10 @@ el.formSobrecupo.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   const cupos = parseInt(el.sobrecupoCupos.value, 10);
   if (!el.sobrecupoFecha.value || !el.sobrecupoHora.value || !cupos || cupos < 1) return;
+  if (el.sobrecupoFecha.value < toFechaISO(new Date()) || horaYaPaso(el.sobrecupoFecha.value, el.sobrecupoHora.value)) {
+    mostrarToast('No puedes agregar un sobrecupo en una fecha u hora pasada.');
+    return;
+  }
 
   // upsert: si ya existe un sobrecupo para ese fecha+hora, actualiza los cupos
   // extra en vez de fallar por la primary key (fecha, hora).
